@@ -1,0 +1,1 @@
+ALTER TABLE "scholarship_document_requirements" ADD COLUMN "section" varchar(30) DEFAULT 'admission' NOT NULL;

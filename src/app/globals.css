@@ -1,0 +1,104 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: var(--font-fraunces), Georgia, "Times New Roman", serif;
+
+  --color-navy-950: #061224;
+  --color-navy-900: #0b1f3a;
+  --color-navy-800: #132d52;
+  --color-navy-700: #1d3d6b;
+  --color-navy-600: #2a5188;
+  --color-navy-100: #e3e9f2;
+  --color-navy-50: #f1f4f9;
+
+  --color-gold-700: #735709;
+  --color-gold-600: #a9831a;
+  --color-gold-500: #d4a72c;
+  --color-gold-400: #e2bd55;
+  --color-gold-200: #f3e2ad;
+  --color-gold-100: #faf1d6;
+  --color-gold-50: #fdf9ec;
+
+  --color-royal-700: #1d4ed8;
+  --color-royal-600: #2563eb;
+  --color-royal-100: #dbe7fe;
+  --color-royal-50: #eff5ff;
+
+  --color-ivory: #faf8f2;
+  --color-ivory-200: #f1ecdf;
+  --color-line: #e5dfcf;
+  --color-ink: #0b1f3a;
+  --color-muted: #4f5b6d;
+
+  --color-success-700: #166534;
+  --color-success-100: #dcfce7;
+  --color-warning-700: #92400e;
+  --color-warning-100: #fef3c7;
+  --color-danger-700: #b91c1c;
+  --color-danger-100: #fee2e2;
+
+  --radius-card: 0.875rem;
+  --shadow-card: 0 1px 2px rgb(11 31 58 / 0.04), 0 4px 16px -8px rgb(11 31 58 / 0.12);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-ivory text-ink antialiased font-sans;
+    font-feature-settings: "ss01", "cv11";
+  }
+  h1, h2, h3 {
+    @apply text-navy-900;
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+  :focus-visible {
+    outline: 3px solid var(--color-royal-600);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  /* grid items must be able to shrink so wide tables scroll inside them instead of widening the page */
+  .grid > * {
+    min-width: 0;
+  }
+  ::selection {
+    background: var(--color-gold-200);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .prose-soar {
+    @apply text-[15px] leading-7 text-navy-900;
+  }
+  .prose-soar h2 { @apply font-display text-2xl mt-8 mb-3; }
+  .prose-soar h3 { @apply text-lg font-semibold mt-6 mb-2; }
+  .prose-soar p { @apply my-3; }
+  .prose-soar ul { @apply list-disc pl-6 my-3 space-y-1; }
+  .prose-soar ol { @apply list-decimal pl-6 my-3 space-y-1; }
+  .prose-soar a { @apply text-royal-700 underline underline-offset-2; }
+  .prose-soar blockquote { @apply border-l-4 border-gold-500 pl-4 italic text-muted my-4; }
+  .prose-soar code { @apply bg-ivory-200 px-1 rounded text-sm; }
+  .prose-soar strong { @apply font-semibold; }
+  .prose-soar h2 + p, .prose-soar h3 + p { @apply mt-2; }
+  .prose-soar table { @apply my-4 w-full border-collapse text-sm; }
+  .prose-soar th { @apply border border-line bg-ivory-200 px-3 py-2 text-left font-semibold; }
+  .prose-soar td { @apply border border-line px-3 py-2 align-top; }
+  .prose-soar ul.contains-task-list { @apply list-none pl-1; }
+  .prose-soar blockquote p { @apply my-1; }
+
+  .anchor-mark {
+    @apply bg-gold-200 rounded-sm px-0.5;
+    box-shadow: inset 0 -2px 0 var(--color-gold-500);
+  }
+}

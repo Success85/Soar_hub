@@ -1,0 +1,59 @@
+name: SOAR Hub CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: soar
+          POSTGRES_PASSWORD: soar
+          POSTGRES_DB: soar_hub_test
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U soar" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://soar:soar@localhost:5432/soar_hub_test
+      DATABASE_URL: postgresql://soar:soar@localhost:5432/soar_hub_test
+      SESSION_SECRET: ci-session-secret-that-is-long-enough-123456
+      CRON_SECRET: ci-cron-secret-123456
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: package-lock.json }
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: test
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env: { POSTGRES_USER: soar, POSTGRES_PASSWORD: soar, POSTGRES_DB: soar_hub }
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U soar" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://soar:soar@localhost:5432/soar_hub
+      SESSION_SECRET: ci-session-secret-that-is-long-enough-123456
+      CRON_SECRET: ci-cron-secret-123456
+      EMAIL_PROVIDER: console
+      STORAGE_DRIVER: local
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: package-lock.json }
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run db:migrate && npm run db:seed:demo
+      - name: E2E (one spec file at a time)
+        run: for f in tests/e2e/*.spec.ts; do npx playwright test "$f" --trace off || exit 1; done
