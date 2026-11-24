@@ -43,18 +43,18 @@ Or run PostgreSQL with pgvector in Docker instead:
 Then:
 
 ```bash
-npm run db:migrate
-npm run db:seed:demo          # base data + clearly-labelled DEMO users/scholarships
-npm run demo:setup               # all-in-one for demos: migrate + demo accounts + scholarships + resources (see docs/DEMO_SCRIPT.md)
-npm run db:import-scholarships   # the 35 Mastercard Foundation partner opportunities (archives the demo scholarships)
-npm run db:import-resources      # learning resources: SOP sample, CV template, recommendation letter sample (with explanations)
-npm run logos:fetch              # optional, needs internet: download each school's logo into public/logos
-npm run dev                   # http://localhost:3000  (check http://localhost:3000/api/health)
+npm run demo:setup     # migrate + base data + 35 partner scholarships + learning resources + demo accounts
+npm run logos:fetch    # optional, needs internet: download each school's logo into public/logos
+npm run dev            # http://localhost:3000  (check http://localhost:3000/api/health)
 ```
+
+`demo:setup` runs, in order: `db:migrate`, `db:seed`, `db:import-scholarships`, `db:import-resources`, `db:seed:demo`.
+For a production-like install without demo accounts, run the first four only. The full demo walkthrough is in
+[`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md).
 
 Demo accounts (local only, password `Soar-demo-2026!` or `$DEMO_PASSWORD`):
 `applicant@demo.soarhub.ng`, `reviewer@demo.soarhub.ng`, `admin@demo.soarhub.ng`, `superadmin@demo.soarhub.ng`.
-In development, emails are written to `.dev-storage/outbox.jsonl` (open verification/reset/referee links from there).
+In development, emails are not sent: open <http://localhost:3000/dev/mailbox> to read them and click verification, reset and referee links.
 
 ## Scripts
 
@@ -64,7 +64,7 @@ In development, emails are written to `.dev-storage/outbox.jsonl` (open verifica
 | `npm run db:migrate` | Apply SQL migrations (`drizzle/`) |
 | `npm run db:seed` | Idempotent base data (roles, permissions, templates, default rubric & milestones) — safe in production |
 | `npm run db:seed:demo` | Base + demo data (refused in production) |
-| `npm run db:import-scholarships` | Load/refresh the 35 Mastercard Foundation partner scholarships (`src/lib/data/mcf-scholarships.ts`, snapshot of 24 Nov 2026). `-- --keep-demo` keeps demo scholarships active |
+| `npm run db:import-scholarships` | Load/refresh the 35 Mastercard Foundation partner scholarships (`src/lib/data/mcf-scholarships.ts`, snapshot of 24 Nov 2026). `-- --keep-demo` keeps old "[Demo]" placeholder scholarships |
 | `npm run logos:fetch` | Download each partner school's icon/logo from its official website into `public/logos/` (re-encoded to 256×256 PNG), record it in `src/lib/data/school-logos.json` and set it on the scholarships. Schools without a logo show an initials badge. `-- --refresh` re-downloads, `-- --no-db` skips the database |
 | `npm run db:import-resources` | Load/refresh SOAR Hub's learning resources (`src/lib/data/learning-resources.ts`; files in `public/downloads`) |
 | `npm run db:create-admin` | Create/promote a super administrator (`ADMIN_EMAIL=… npm run db:create-admin`) |

@@ -18,8 +18,9 @@ npm run demo:setup
 npm run dev
 ```
 
-`demo:setup` applies migrations and creates the demo accounts. It also loads the 35 partner scholarships (archiving the
-`[Demo]` placeholders) and the learning resources. It is safe to run again.
+`demo:setup` applies migrations, loads the 35 real partner scholarships and the learning resources, and creates the
+demo accounts. The sample applicant gets a real in-progress application on **EARTH University** (open until
+31 Jan 2027). Old `[Demo] Partner University` placeholders from earlier versions are removed. It is safe to run again.
 
 Open <http://localhost:3000>.
 
@@ -30,8 +31,7 @@ Open <http://localhost:3000>.
 | Admin | `admin@demo.soarhub.ng` | Admin dashboard (part 3) |
 | Reviewer | `reviewer@demo.soarhub.ng` | Reviewing documents and essays (part 4) |
 | Super admin | `superadmin@demo.soarhub.ng` | Users and roles |
-| Applicant | `
-` | A pre-filled applicant (optional) |
+| Applicant | `applicant@demo.soarhub.ng` | Chiamaka Okafor: completed profile and an EARTH University application in progress |
 
 In part 2 you create a **new** applicant live, so the audience sees sign-up from the very start.
 

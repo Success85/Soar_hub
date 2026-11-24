@@ -21,7 +21,7 @@
     "db:seed:demo": "SEED_DEMO=true tsx --require ./scripts/stub-server-only.cjs scripts/seed.ts",
     "db:import-scholarships": "tsx --require ./scripts/stub-server-only.cjs scripts/import-scholarships.ts",
     "db:import-resources": "tsx --require ./scripts/stub-server-only.cjs scripts/import-resources.ts",
-    "demo:setup": "npm run db:migrate && npm run db:seed:demo && npm run db:import-scholarships && npm run db:import-resources",
+    "demo:setup": "npm run db:migrate && npm run db:seed && npm run db:import-scholarships && npm run db:import-resources && npm run db:seed:demo",
     "logos:fetch": "tsx --require ./scripts/stub-server-only.cjs scripts/fetch-logos.ts"
   },
   "dependencies": {

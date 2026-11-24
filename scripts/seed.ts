@@ -3,11 +3,13 @@
  *
  *   npm run db:seed            → base data (roles/permissions, templates, rubric, milestone
  *                                templates, content categories). Always safe, including production.
- *   SEED_DEMO=true npm run db:seed → also creates DEMO users, scholarships, applications etc.
- *                                Refused when NODE_ENV=production unless ALLOW_DEMO_IN_PRODUCTION=true.
+ *   SEED_DEMO=true npm run db:seed → also creates demo ACCOUNTS (admin, reviewer, two applicants) and gives the
+ *                                main applicant a real in-progress application on an open partner listing.
+ *                                Run "npm run db:import-scholarships" first. Refused when NODE_ENV=production
+ *                                unless ALLOW_DEMO_IN_PRODUCTION=true.
  *
- * Demo scholarships are flagged is_demo, named "[Demo] …", and use example.org sources.
- * They are NOT real opportunities and the UI labels them as demonstration records.
+ * No placeholder scholarships are created any more; old "[Demo] Partner University …" records from earlier
+ * versions are removed (see scripts/demo-cleanup.ts).
  */
 import "dotenv/config";
 import { and, eq, isNull, sql } from "drizzle-orm";
@@ -21,12 +23,8 @@ import {
   notificationTemplates,
   profiles,
   rolePermissions,
-  scholarshipCriteria,
-  scholarshipCriteriaGroups,
-  scholarshipDocumentRequirements,
   scholarshipMilestoneTemplates,
   scholarships,
-  scholarshipSources,
   userRoles,
   users,
   consents,
@@ -38,6 +36,7 @@ import { hashPassword } from "@/lib/auth/password";
 import { DEFAULT_RUBRIC } from "@/lib/integrations/ai";
 import { DEFAULT_TEMPLATES } from "@/lib/services/notification-templates";
 import { DEFAULT_MILESTONES } from "@/lib/services/planner";
+import { removeDemoScholarships } from "./demo-cleanup";
 
 const log = (...a: unknown[]) => console.log("[seed]", ...a);
 
@@ -100,120 +99,10 @@ async function upsertUser(email: string, firstName: string, lastName: string, pa
   return id;
 }
 
-interface DemoCriterion {
-  name: string;
-  description?: string;
-  fieldKey: string;
-  operator: (typeof scholarshipCriteria.$inferInsert)["operator"];
-  requiredValue?: unknown;
-  severity?: "absolute" | "important" | "advisory";
-  isFixable?: boolean;
-  isRequired?: boolean;
-  group?: string;
-  passExplanation?: string;
-  recommendedAction?: string;
-  questionText?: string;
-  answerType?: string;
-}
-
-async function upsertScholarship(spec: {
-  slug: string;
-  name: string;
-  university: string;
-  country: string;
-  city: string;
-  daysToDeadline: number;
-  programmes: string[];
-  summary: string;
-  criteria: DemoCriterion[];
-  groups?: { key: string; name: string; logic: "and" | "or" }[];
-  featured?: boolean;
-  status?: "published" | "draft" | "pending_verification";
-}, adminId: string) {
-  const [existing] = await db.select().from(scholarships).where(eq(scholarships.slug, spec.slug)).limit(1);
-  if (existing) return existing;
-  const deadline = new Date(Date.now() + spec.daysToDeadline * 86_400_000);
-  deadline.setUTCHours(22, 59, 0, 0); // 23:59 Lagos time
-  const status = spec.status ?? "published";
-  const [s] = await db
-    .insert(scholarships)
-    .values({
-      slug: spec.slug,
-      name: spec.name,
-      partnerUniversity: spec.university,
-      country: spec.country,
-      city: spec.city,
-      programmeLevel: "undergraduate",
-      scholarshipType: "Fully funded",
-      programmes: spec.programmes,
-      summary: spec.summary,
-      description:
-        "**This is a demonstration record created by the SOAR Hub seed script.** It shows how a verified, published partner-university opportunity appears on the platform. It is not a real scholarship and must not be used to apply.\n\nThe programme supports academically talented young people who face financial barriers, with a focus on leadership potential and a commitment to giving back to their communities.",
-      tuitionCoverage: "Full tuition and fees",
-      livingAllowance: "Monthly stipend for living costs",
-      accommodationBenefits: "On-campus accommodation",
-      travelBenefits: "Return economy flights and visa costs",
-      otherBenefits: "Laptop, mentorship, leadership development and transition support",
-      openingDate: new Date(Date.now() - 30 * 86_400_000),
-      deadline,
-      timezone: "Africa/Lagos",
-      applicationUrl: "https://example.org/apply",
-      status,
-      isActive: true,
-      isFeatured: !!spec.featured,
-      isDemo: true,
-      lastVerifiedAt: status === "published" ? new Date() : null,
-      verifiedBy: status === "published" ? adminId : null,
-      publishedAt: status === "published" ? new Date() : null,
-      createdBy: adminId,
-      updatedBy: adminId,
-    })
-    .returning();
-  await db.insert(scholarshipSources).values({ scholarshipId: s.id, sourceName: `${spec.university} — official scholarship page (demo)`, url: `https://example.org/${spec.slug}`, isPrimary: true, verificationStatus: status === "published" ? "verified" : "unverified", verifiedBy: status === "published" ? adminId : null, verifiedAt: status === "published" ? new Date() : null });
-  const gmap = new Map<string, string>();
-  for (const [i, g] of (spec.groups ?? []).entries()) {
-    const [row] = await db.insert(scholarshipCriteriaGroups).values({ scholarshipId: s.id, name: g.name, logic: g.logic, sortOrder: i }).returning();
-    gmap.set(g.key, row.id);
-  }
-  for (const [i, c] of spec.criteria.entries()) {
-    await db.insert(scholarshipCriteria).values({
-      scholarshipId: s.id,
-      groupId: c.group ? gmap.get(c.group) ?? null : null,
-      name: c.name,
-      description: c.description ?? null,
-      fieldKey: c.fieldKey,
-      operator: c.operator,
-      requiredValue: (c.requiredValue ?? null) as object,
-      severity: c.severity ?? "important",
-      isFixable: c.isFixable ?? true,
-      isRequired: c.isRequired ?? true,
-      passExplanation: c.passExplanation ?? null,
-      recommendedAction: c.recommendedAction ?? null,
-      sourceReference: `${spec.university} eligibility page (demo)`,
-      questionText: c.questionText ?? null,
-      answerType: c.answerType ?? null,
-      sortOrder: i,
-    });
-  }
-  const reqs: [typeof scholarshipDocumentRequirements.$inferInsert.category, string, boolean][] = [
-    ["academic_transcript", "Secondary school transcript / WAEC result", true],
-    ["cv", "CV", true],
-    ["passport", "International passport (data page)", true],
-    ["recommendation_letter", "Reference letter from a teacher or mentor", true],
-    ["financial_documentation", "Evidence of financial need", false],
-  ];
-  for (const [i, [category, name, isRequired]] of reqs.entries()) await db.insert(scholarshipDocumentRequirements).values({ scholarshipId: s.id, category, name, isRequired, sortOrder: i });
-  log(`demo scholarship: ${s.name}`);
-  return s;
-}
-
-const BASE_CRITERIA: DemoCriterion[] = [
-  { name: "Age limit", description: "Applicants must be 29 or younger.", fieldKey: "age", operator: "lte", requiredValue: 29, severity: "absolute", isFixable: false, passExplanation: "Your age meets this scholarship's requirements." },
-  { name: "Nigerian citizenship", fieldKey: "country_of_citizenship", operator: "in", requiredValue: ["Nigeria", "Nigerian"], severity: "absolute", isFixable: false },
-  { name: "Completed or completing secondary school", fieldKey: "education_level", operator: "in", requiredValue: ["secondary_in_progress", "secondary_completed"], severity: "important" },
-  { name: "WASSCE, NECO or GCE", fieldKey: "qualifications", operator: "in", requiredValue: ["WASSCE", "NECO", "GCE"], severity: "important", recommendedAction: "Add the secondary qualification you have taken or will take." },
-  { name: "At least five credit passes", fieldKey: "credit_passes", operator: "gte", requiredValue: 5, severity: "important", recommendedAction: "If you're re-sitting exams, update your credit passes when results are out." },
-  { name: "Demonstrated financial need", fieldKey: "demonstrates_financial_need", operator: "is_true", severity: "important" },
+/** Real partner listings to start the sample applicant's application on, in order of preference. */
+const DEMO_APPLICATION_TARGETS: { slug: string; answers?: Record<string, unknown> }[] = [
+  { slug: "mcf-earth-university-costa-rica", answers: { "custom.english_requirement": true } }, // open until 31 Jan 2027
+  { slug: "mcf-alu-rwanda" }, // open until 30 Nov 2026
 ];
 
 async function seedDemo() {
@@ -227,58 +116,43 @@ async function seedDemo() {
 
   await db
     .update(profiles)
-    .set({ dateOfBirth: "2007-04-12", gender: "female", stateOfOrigin: "Enugu", countryOfCitizenship: "Nigeria", countryOfResidence: "Nigeria", phone: "08031234567", educationLevel: "secondary_completed", currentSchool: "Federal Government Girls' College, Enugu (demo)", graduationYear: 2025, qualifications: ["WASSCE", "UTME"], creditPasses: 7, gradeAverage: "78.50", firstGeneration: true, householdIncomeBand: "low", demonstratesFinancialNeed: true, employmentStatus: "student", preferredProgramme: "Computer Science", careerInterests: "Building technology that helps rural health clinics.", personalBackground: "I grew up in Nsukka helping my mother run a small provisions shop while studying.", onboardingCompletedAt: new Date(), welcomeSeenAt: new Date() })
+    .set({ dateOfBirth: "2007-04-12", gender: "female", stateOfOrigin: "Enugu", countryOfCitizenship: "Nigeria", countryOfResidence: "Nigeria", phone: "08031234567", educationLevel: "secondary_completed", currentSchool: "Federal Government Girls' College, Enugu", graduationYear: 2025, qualifications: ["WASSCE", "UTME"], creditPasses: 7, gradeAverage: "78.50", firstGeneration: true, householdIncomeBand: "low", demonstratesFinancialNeed: true, employmentStatus: "student", preferredProgramme: "Agricultural Sciences", careerInterests: "Climate-smart farming and simple technology that helps smallholder farmers sell their produce.", personalBackground: "I grew up in Nsukka helping my mother run a small provisions shop while studying.", onboardingCompletedAt: new Date(), welcomeSeenAt: new Date() })
     .where(eq(profiles.userId, applicant));
   await db.insert(consents).values({ userId: applicant, type: "data_processing", version: "2026-11" }).onConflictDoNothing();
   await db.update(profiles).set({ dateOfBirth: "2006-09-30", countryOfCitizenship: "Nigeria", countryOfResidence: "Nigeria", stateOfOrigin: "Kano", educationLevel: "secondary_completed", welcomeSeenAt: new Date() }).where(eq(profiles.userId, applicant2));
 
-  const s1 = await upsertScholarship(
-    { slug: "demo-mcf-scholars-partner-university-a", name: "[Demo] Mastercard Foundation Scholars Program — Partner University A", university: "Demo Partner University A", country: "Ghana", city: "Accra", daysToDeadline: 75, programmes: ["Computer Science", "Engineering", "Business Administration", "Public Health"], summary: "Fully funded undergraduate study for young Africans with financial need and leadership potential. (Demonstration record.)", criteria: BASE_CRITERIA, featured: true },
-    admin,
-  );
-  await upsertScholarship(
-    {
-      slug: "demo-mcf-scholars-partner-university-b",
-      name: "[Demo] Mastercard Foundation Scholars Program — Partner University B",
-      university: "Demo Partner University B",
-      country: "Rwanda",
-      city: "Kigali",
-      daysToDeadline: 21,
-      programmes: ["Agriculture", "Economics", "Software Engineering"],
-      summary: "Undergraduate scholarship emphasising community leadership. (Demonstration record.)",
-      groups: [{ key: "priority", name: "Priority background (any one)", logic: "or" }],
-      criteria: [
-        ...BASE_CRITERIA.slice(0, 5),
-        { name: "First-generation university student", fieldKey: "first_generation", operator: "is_true", group: "priority" },
-        { name: "Refugee or displaced background", fieldKey: "is_refugee_or_displaced", operator: "is_true", group: "priority" },
-        { name: "Household income level", fieldKey: "household_income_band", operator: "in", requiredValue: ["very_low", "low"], group: "priority" },
-        { name: "Community service experience", fieldKey: "custom.community_service", operator: "is_true", questionText: "Have you volunteered or led a community project in the last two years?", answerType: "boolean" },
-      ],
-    },
-    admin,
-  );
-  await upsertScholarship({ slug: "demo-partner-university-c-draft", name: "[Demo] Partner University C Undergraduate Scholarship (draft)", university: "Demo Partner University C", country: "Kenya", city: "Nairobi", daysToDeadline: 120, programmes: ["Medicine"], summary: "Draft record awaiting verification. (Demonstration record.)", criteria: BASE_CRITERIA.slice(0, 2), status: "pending_verification" }, admin);
+  // Remove the old "[Demo] Partner University" placeholders (and their applications) if an earlier seed created them.
+  const removed = await removeDemoScholarships();
+  if (removed) log(`removed ${removed} placeholder scholarship(s) and their applications`);
 
-  // demo application for the main applicant, built with the real services
-  const existingApp = await db.select().from(applications).where(and(eq(applications.userId, applicant), eq(applications.scholarshipId, s1.id))).limit(1);
-  if (!existingApp[0]) {
-    const { runAssessment } = await import("@/lib/services/eligibility");
-    const { createApplication, transitionApplication } = await import("@/lib/services/applications");
-    const { assignReviewer } = await import("@/lib/services/admin");
-    const { loadAccess } = await import("@/lib/auth/session");
-    await runAssessment(applicant, s1.id, { trigger: "manual" });
-    const { id } = await createApplication(applicant, s1.id);
-    await transitionApplication(id, "in_progress", { id: applicant, type: "applicant" }, { reason: "Started working on application" });
+  // A real in-progress application for the main applicant, on the first open partner listing she qualifies for.
+  const { runAssessment } = await import("@/lib/services/eligibility");
+  const { createApplication, transitionApplication } = await import("@/lib/services/applications");
+  const hasApp = await db.select({ id: applications.id }).from(applications).where(eq(applications.userId, applicant)).limit(1);
+  let created: string | null = null;
+  for (const c of hasApp[0] ? [] : DEMO_APPLICATION_TARGETS) {
+    const [target] = await db.select().from(scholarships).where(and(eq(scholarships.slug, c.slug), eq(scholarships.isActive, true))).limit(1);
+    if (!target || (target.deadline && target.deadline < new Date())) continue;
+    const outcome = await runAssessment(applicant, target.id, { trigger: "manual", answers: c.answers });
+    if (outcome.evaluation.overall !== "likely_eligible") continue;
+    const { id } = await createApplication(applicant, target.id);
+    const [app] = await db.select({ status: applications.status }).from(applications).where(eq(applications.id, id)).limit(1);
+    if (app.status === "eligible") await transitionApplication(id, "in_progress", { id: applicant, type: "applicant" }, { reason: "Started working on application" });
     const ms = await db.select().from(applicationMilestones).where(eq(applicationMilestones.applicationId, id));
     for (const m of ms.filter((x) => ["research", "eligibility"].includes(x.templateKey))) {
       await db.update(applicationMilestones).set({ status: "completed", completedAt: new Date() }).where(eq(applicationMilestones.id, m.id));
     }
     const { recomputeProgress } = await import("@/lib/services/planner");
     await recomputeProgress(id);
+    const { assignReviewer } = await import("@/lib/services/admin");
+    const { loadAccess } = await import("@/lib/auth/session");
     const access = await loadAccess(admin);
     await assignReviewer({ id: admin, email: "", firstName: "Tunde", lastName: "Bakare", emailVerified: true, status: "active", roles: access.roles, permissions: access.permissions, sessionId: "seed" }, id, reviewer);
-    log("demo application created and reviewer assigned");
+    created = target.partnerUniversity;
+    break;
   }
+  if (created) log(`sample application created: ${created} (reviewer assigned)`);
+  else if (!hasApp[0]) log('no sample application: run "npm run db:import-scholarships" first, then this seed again');
 
   const bankCount = await db.select({ c: sql<number>`count(*)::int` }).from(answerBankEntries).where(eq(answerBankEntries.userId, applicant));
   if (!bankCount[0].c) {
@@ -289,16 +163,8 @@ async function seedDemo() {
     ]);
   }
 
-  const res = await db.select({ id: educationalResources.id }).from(educationalResources).where(eq(educationalResources.isDemo, true)).limit(1);
-  if (!res[0]) {
-    const [cat] = await db.select().from(contentCategories).where(eq(contentCategories.slug, "essay-writing")).limit(1);
-    const [cat2] = await db.select().from(contentCategories).where(eq(contentCategories.slug, "application-guides")).limit(1);
-    await db.insert(educationalResources).values([
-      { title: "How to write a personal statement that sounds like you", slug: "personal-statement-that-sounds-like-you", categoryId: cat?.id, type: "essay_guide", description: "A practical, step-by-step approach to telling your own story with evidence and reflection.", body: "## Start with a moment, not a summary\n\nStrong essays open with a specific moment. Instead of “I am passionate about technology”, describe the afternoon you fixed your school's printer.\n\n## Show evidence\n\nFor every claim, ask: *how would a stranger know this is true?* Add a number, a result, or a short example.\n\n## Reflect\n\nAdmissions readers want to know what you learned and how you changed. End paragraphs with what the experience taught you.\n\n## Keep your voice\n\nRead your essay aloud. If a sentence doesn't sound like you, rewrite it in your own words.", authorName: "SOAR Hub team", status: "published", visibility: "public", publishedAt: new Date(), isDemo: true },
-      { title: "Your scholarship application checklist", slug: "scholarship-application-checklist", categoryId: cat2?.id, type: "guide", description: "Everything to gather before you submit — and how early to start.", body: "## Three months before\n\n- Read the official scholarship page carefully\n- Check eligibility on SOAR Hub\n- Ask two referees\n\n## Six weeks before\n\n- Finalise your CV\n- Draft and revise your essay\n- Request your transcript\n\n## Final week\n\n- Proofread everything\n- Submit on the official portal — never through a third party\n- Save your confirmation", authorName: "SOAR Hub team", status: "published", visibility: "public", publishedAt: new Date(), isDemo: true },
-      { title: "Choosing the right referee", slug: "choosing-the-right-referee", categoryId: (await db.select().from(contentCategories).where(eq(contentCategories.slug, "reference-letters")).limit(1))[0]?.id, type: "guide", description: "Who to ask, when to ask, and how to make it easy for them.", body: "Pick someone who knows your work well — a teacher, mentor or supervisor. Ask at least four weeks before the deadline, share your CV and the scholarship's values, and send a polite reminder a week before.", authorName: "SOAR Hub team", status: "published", visibility: "applicants", publishedAt: new Date(), isDemo: true },
-    ]);
-  }
+  // Retire the old placeholder articles; the real library comes from "npm run db:import-resources".
+  await db.update(educationalResources).set({ status: "archived", updatedAt: new Date() }).where(eq(educationalResources.isDemo, true));
   log(`demo users ready (password from DEMO_PASSWORD or default): superadmin@, admin@, reviewer@, applicant@, applicant2@demo.soarhub.ng`);
 }
 

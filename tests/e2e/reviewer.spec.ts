@@ -10,7 +10,7 @@ test("reviewer: reviews a document and an essay with anchored feedback; applican
   // applicant prepares work
   await login(page, "applicant@demo.soarhub.ng");
   await page.goto("/applications");
-  await page.getByRole("link", { name: /Partner University A/ }).first().click();
+  await page.getByRole("link", { name: /EARTH University/ }).first().click();
   await page.waitForURL(/\/applications\/[0-9a-f-]{36}/);
   const appId = page.url().split("/applications/")[1];
   await page.goto(`/documents?application=${appId}`);

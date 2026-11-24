@@ -2,13 +2,13 @@
  * Imports the Mastercard Foundation partner opportunities (src/lib/data/mcf-scholarships.ts).
  *
  *   npm run db:import-scholarships              → insert missing records, refresh existing ones
- *   npm run db:import-scholarships -- --keep-demo  → don't archive the seeded [Demo] scholarships
+ *   npm run db:import-scholarships -- --keep-demo  → don't remove old [Demo] placeholder scholarships
  *
  * Idempotent (keyed by slug). Re-running overwrites window/eligibility text and rules with the dataset —
  * edit the dataset (or use the admin UI and stop re-importing) to make lasting changes.
  */
 import "dotenv/config";
-import { and, eq, inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db, sqlClient } from "@/lib/db";
 import {
   auditLogs,
@@ -21,6 +21,7 @@ import {
 } from "@/lib/db/schema";
 import { documentsFor, MCF_SCHOLARSHIPS } from "@/lib/data/mcf-scholarships";
 import { logoFor } from "@/lib/data/school-logos";
+import { removeDemoScholarships } from "./demo-cleanup";
 import { validateCriteria, type Criterion } from "@/lib/engine/eligibility";
 
 const VERIFIED_AT = new Date("2026-11-24T12:00:00Z");
@@ -133,11 +134,8 @@ async function main() {
   }
 
   if (!keepDemo) {
-    const demos = await db.select({ id: scholarships.id }).from(scholarships).where(and(eq(scholarships.isDemo, true), eq(scholarships.isActive, true)));
-    if (demos.length) {
-      await db.update(scholarships).set({ status: "archived", isActive: false, updatedAt: new Date() }).where(inArray(scholarships.id, demos.map((d) => d.id)));
-      console.log(`Archived ${demos.length} demo scholarship(s) (history kept; use --keep-demo to skip).`);
-    }
+    const removed = await removeDemoScholarships();
+    if (removed) console.log(`Removed ${removed} "[Demo]" placeholder scholarship(s) and their applications.`);
   }
   console.log(`Scholarships imported: ${created} created, ${updated} updated (${MCF_SCHOLARSHIPS.length} in dataset).`);
   await sqlClient.end();
