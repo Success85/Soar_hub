@@ -22,7 +22,7 @@ export default async function ApplicantsPage({ searchParams }: { searchParams: P
     <>
       <PageHeader title="Applicants" description={`${res.total} applicant${res.total === 1 ? "" : "s"}`} actions={user.permissions.has("exports.basic") && <Button asChild variant="secondary"><a href={`/api/admin/export/applicants?${qs({})}`}><Download aria-hidden /> Export CSV</a></Button>} />
       <form method="get" className="mb-6 grid gap-3 rounded-[var(--radius-card)] border border-line bg-white p-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="space-y-1"><Label htmlFor="q">Search</Label><Input id="q" name="q" defaultValue={sp.q} placeholder="Name or email" /></div>
+        <div className="space-y-1"><Label htmlFor="q">Search</Label><Input id="q" name="q" defaultValue={sp.q} placeholder="Name, email or member ID" /></div>
         <div className="space-y-1"><Label htmlFor="scholarshipId">Scholarship</Label><Select id="scholarshipId" name="scholarshipId" defaultValue={sp.scholarshipId ?? ""}><option value="">Any</option>{schs.rows.map(({ s }) => <option key={s.id} value={s.id}>{s.name}</option>)}</Select></div>
         <div className="space-y-1"><Label htmlFor="status">Application status</Label><Select id="status" name="status" defaultValue={sp.status ?? ""}><option value="">Any</option>{Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select></div>
         <div className="space-y-1"><Label htmlFor="verdict">Eligibility verdict</Label><Select id="verdict" name="verdict" defaultValue={sp.verdict ?? ""}><option value="">Any</option><option value="likely_eligible">Likely eligible</option><option value="more_info_needed">More info needed</option><option value="not_eligible">Not eligible</option></Select></div>
@@ -34,11 +34,12 @@ export default async function ApplicantsPage({ searchParams }: { searchParams: P
         <div className="flex items-end gap-2"><Button type="submit">Filter</Button><Link href="/admin/applicants" className="pb-2 text-sm font-semibold text-royal-700">Reset</Link></div>
       </form>
       <Table caption="Applicants">
-        <thead><tr><Th>Applicant</Th><Th>Registered</Th><Th>Profile</Th><Th>Applications</Th><Th>Latest status</Th><Th>State</Th></tr></thead>
+        <thead><tr><Th>Applicant</Th><Th>Member ID</Th><Th>Registered</Th><Th>Profile</Th><Th>Applications</Th><Th>Latest status</Th><Th>State</Th></tr></thead>
         <tbody>
           {res.rows.map((r) => (
             <tr key={r.id}>
               <Td><Link href={`/admin/applicants/${r.id}`} className="font-semibold hover:underline">{r.first_name} {r.last_name}</Link><span className="block text-xs text-muted">{r.email}</span>{!r.email_verified_at && <Badge tone="warning">Unverified</Badge>}{r.status !== "active" && <Badge tone="danger">{r.status}</Badge>}</Td>
+              <Td className="whitespace-nowrap font-mono text-xs">{r.member_code ?? "—"}</Td>
               <Td className="whitespace-nowrap">{formatDate(r.created_at)}</Td>
               <Td>{r.completion}%</Td>
               <Td>{r.applications} <span className="text-xs text-muted">({r.submitted} submitted)</span></Td>
@@ -46,7 +47,7 @@ export default async function ApplicantsPage({ searchParams }: { searchParams: P
               <Td>{r.state_of_origin ?? "—"}</Td>
             </tr>
           ))}
-          {res.rows.length === 0 && <tr><Td colSpan={6} className="py-8 text-center text-muted">No applicants match these filters.</Td></tr>}
+          {res.rows.length === 0 && <tr><Td colSpan={7} className="py-8 text-center text-muted">No applicants match these filters.</Td></tr>}
         </tbody>
       </Table>
       <Pagination page={res.page} total={res.total} pageSize={res.pageSize} hrefFor={(p) => `/admin/applicants?${qs({ page: String(p) })}`} />

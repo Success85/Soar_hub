@@ -58,7 +58,7 @@ export function ProfileForm({
       {has("personal") && (
         <fieldset className="space-y-5">
           <legend className="text-lg font-semibold">Personal details</legend>
-          <p className={WHY}>We use these to check age, citizenship and residence requirements, and to send reminders. Your phone number is only used for SMS reminders you choose to receive.</p>
+          <p className={WHY}>We use these to check age, citizenship and residence requirements, and to send reminders. Your phone number is optional.</p>
           <div className="grid gap-5 sm:grid-cols-2">
             <F name="firstName" label="First name">
               <Input id="firstName" name="firstName" defaultValue={user.firstName} autoComplete="given-name" />
@@ -92,7 +92,7 @@ export function ProfileForm({
                 <option value="Outside Nigeria">Outside Nigeria</option>
               </Select>
             </F>
-            <F name="phone" label="Phone number" optional hint="For optional SMS reminders, e.g. 0803 123 4567">
+            <F name="phone" label="Phone number" optional hint="Optional, e.g. 0803 123 4567">
               <Input id="phone" name="phone" type="tel" inputMode="tel" autoComplete="tel" defaultValue={p.phone ?? ""} />
             </F>
           </div>

@@ -1,4 +1,5 @@
 import "server-only";
+import { normaliseMemberCode } from "@/lib/member-code";
 import { and, asc, desc, eq, gte, ilike, inArray, isNull, lte, or, sql, type SQL } from "drizzle-orm";
 import type { CurrentUser } from "@/lib/auth/session";
 import { can, PERMISSIONS, type Permission, type Role } from "@/lib/auth/permissions";
@@ -100,7 +101,10 @@ const completionSql = sql<number>`(
 
 export async function listApplicants(f: ApplicantFilters, opts: { limit?: number } = {}) {
   const conds: SQL[] = [sql`EXISTS (SELECT 1 FROM user_roles r WHERE r.user_id = u.id AND r.role = 'applicant')`, sql`u.deleted_at IS NULL`];
-  if (f.q) conds.push(sql`(u.first_name || ' ' || u.last_name ILIKE ${"%" + f.q + "%"} OR u.email ILIKE ${"%" + f.q + "%"})`);
+  if (f.q) {
+    const code = normaliseMemberCode(f.q);
+    conds.push(code ? sql`u.member_code = ${code}` : sql`(u.first_name || ' ' || u.last_name ILIKE ${"%" + f.q + "%"} OR u.email ILIKE ${"%" + f.q + "%"} OR u.member_code ILIKE ${"%" + f.q.trim() + "%"})`);
+  }
   if (f.from) conds.push(sql`u.created_at >= ${f.from}::date`);
   if (f.to) conds.push(sql`u.created_at < (${f.to}::date + 1)`);
   if (f.scholarshipId) conds.push(sql`EXISTS (SELECT 1 FROM applications a WHERE a.user_id = u.id AND a.scholarship_id = ${f.scholarshipId} AND a.deleted_at IS NULL)`);
@@ -116,9 +120,9 @@ export async function listApplicants(f: ApplicantFilters, opts: { limit?: number
   const page = Math.max(1, f.page ?? 1);
   const rows = await db.execute<{
     id: string; first_name: string; last_name: string; email: string; created_at: string; email_verified_at: string | null; status: string;
-    completion: number; applications: number; latest_status: string | null; submitted: number; state_of_origin: string | null; education_level: string | null;
+    member_code: string | null; completion: number; applications: number; latest_status: string | null; submitted: number; state_of_origin: string | null; education_level: string | null;
   }>(sql`
-    SELECT u.id, u.first_name, u.last_name, u.email, u.created_at, u.email_verified_at, u.status::text,
+    SELECT u.id, u.first_name, u.last_name, u.email, u.member_code, u.created_at, u.email_verified_at, u.status::text,
       ${completionSql} AS completion,
       (SELECT count(*)::int FROM applications a WHERE a.user_id = u.id AND a.deleted_at IS NULL) AS applications,
       (SELECT a.status::text FROM applications a WHERE a.user_id = u.id AND a.deleted_at IS NULL ORDER BY a.updated_at DESC LIMIT 1) AS latest_status,
@@ -164,7 +168,7 @@ export async function adminListApplications(f: { q?: string; status?: string; sc
   const conds: SQL[] = [isNull(applications.deletedAt)];
   if (f.status) conds.push(eq(applications.status, f.status as never));
   if (f.scholarshipId) conds.push(eq(applications.scholarshipId, f.scholarshipId));
-  if (f.q) conds.push(or(ilike(users.firstName, `%${f.q}%`), ilike(users.lastName, `%${f.q}%`), ilike(users.email, `%${f.q}%`))!);
+  if (f.q) conds.push(or(ilike(users.firstName, `%${f.q}%`), ilike(users.lastName, `%${f.q}%`), ilike(users.email, `%${f.q}%`), eq(users.memberCode, normaliseMemberCode(f.q) ?? "-"))!);
   if (f.unassigned) conds.push(sql`NOT EXISTS (SELECT 1 FROM reviewer_assignments ra WHERE ra.application_id = ${applications.id} AND ra.is_active)`);
   const page = Math.max(1, f.page ?? 1);
   const where = and(...conds);
@@ -238,7 +242,7 @@ export async function assignedApplications(reviewerId: string) {
 
 export async function listUsers(f: { q?: string; role?: string; page?: number }) {
   const conds: SQL[] = [isNull(users.deletedAt)];
-  if (f.q) conds.push(or(ilike(users.email, `%${f.q}%`), ilike(users.firstName, `%${f.q}%`), ilike(users.lastName, `%${f.q}%`))!);
+  if (f.q) conds.push(or(ilike(users.email, `%${f.q}%`), ilike(users.firstName, `%${f.q}%`), ilike(users.lastName, `%${f.q}%`), eq(users.memberCode, normaliseMemberCode(f.q) ?? "-"))!);
   if (f.role) conds.push(sql`EXISTS (SELECT 1 FROM user_roles r WHERE r.user_id = ${users.id} AND r.role::text = ${f.role})`);
   const page = Math.max(1, f.page ?? 1);
   const rows = await db

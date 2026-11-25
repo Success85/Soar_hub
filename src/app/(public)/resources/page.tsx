@@ -2,19 +2,20 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, CircleHelp, Compass } from "lucide-react";
 import { ResourceLibrary } from "@/components/resource-library";
-import { getCurrentUser } from "@/lib/auth/session";
+import { getCurrentUser, requireMemberPage } from "@/lib/auth/session";
 
-export const metadata: Metadata = { title: "Learning resources", description: "Free scholarship application guides, sample SOP, CV template, recommendation letter sample, essay advice and interview preparation." };
+export const metadata: Metadata = { title: "Learning resources", description: "Scholarship application guides, sample SOP, CV template, recommendation letter sample, essay advice and interview preparation." };
 export const dynamic = "force-dynamic";
 
 export default async function ResourcesPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  await requireMemberPage("/resources");
   const [user, sp] = await Promise.all([getCurrentUser(), searchParams]);
   const filtering = !!(sp.q || sp.category || sp.tag || sp.type);
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-gold-700">Learning library</p>
       <h1 className="mt-2 font-display text-4xl">Learn how to apply with confidence</h1>
-      <p className="mt-2 max-w-2xl text-muted">Free guidance written for young Nigerians applying to fully funded scholarships: sample documents with explanations, templates and step-by-step guides.</p>
+      <p className="mt-2 max-w-2xl text-muted">Practical guidance written for young Nigerians applying to fully funded scholarships: sample documents with explanations, templates and step-by-step guides.</p>
 
       {!filtering && (
         <div className="mt-8 grid gap-4 md:grid-cols-[1.6fr_1fr]">

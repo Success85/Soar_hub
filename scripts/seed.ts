@@ -30,6 +30,7 @@ import {
   consents,
   answerBankEntries,
   educationalResources,
+  memberships,
 } from "@/lib/db/schema";
 import { DEFAULT_ROLE_PERMISSIONS, type Role } from "@/lib/auth/permissions";
 import { hashPassword } from "@/lib/auth/password";
@@ -37,6 +38,7 @@ import { DEFAULT_RUBRIC } from "@/lib/integrations/ai";
 import { DEFAULT_TEMPLATES } from "@/lib/services/notification-templates";
 import { DEFAULT_MILESTONES } from "@/lib/services/planner";
 import { removeDemoScholarships } from "./demo-cleanup";
+import { assignMemberCode } from "@/lib/services/member-code";
 
 const log = (...a: unknown[]) => console.log("[seed]", ...a);
 
@@ -96,6 +98,7 @@ async function upsertUser(email: string, firstName: string, lastName: string, pa
     ]);
   }
   for (const role of roles) await db.insert(userRoles).values({ userId: id, role }).onConflictDoNothing();
+  await assignMemberCode(id);
   return id;
 }
 
@@ -120,6 +123,12 @@ async function seedDemo() {
     .where(eq(profiles.userId, applicant));
   await db.insert(consents).values({ userId: applicant, type: "data_processing", version: "2026-11" }).onConflictDoNothing();
   await db.update(profiles).set({ dateOfBirth: "2006-09-30", countryOfCitizenship: "Nigeria", countryOfResidence: "Nigeria", stateOfOrigin: "Kano", educationLevel: "secondary_completed", welcomeSeenAt: new Date() }).where(eq(profiles.userId, applicant2));
+
+  // Demo applicants are members (lifetime, source "demo") so the full platform can be shown without paying.
+  for (const uid of [applicant, applicant2]) {
+    const has = await db.select({ id: memberships.id }).from(memberships).where(and(eq(memberships.userId, uid), isNull(memberships.revokedAt))).limit(1);
+    if (!has[0]) await db.insert(memberships).values({ userId: uid, startsAt: new Date(), expiresAt: null, source: "demo", note: "Demo account" });
+  }
 
   // Remove the old "[Demo] Partner University" placeholders (and their applications) if an earlier seed created them.
   const removed = await removeDemoScholarships();

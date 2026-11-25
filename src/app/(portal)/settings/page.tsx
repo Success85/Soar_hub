@@ -6,6 +6,7 @@ import { downloadExportAction, requestDeletionAction, requestExportAction } from
 import { ActionButton, ActionForm, FieldError, SubmitButton } from "@/components/forms/action-form";
 import { Card, CardBody, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Checkbox, Input, Label, Textarea } from "@/components/ui/form";
+import { MemberCode } from "@/components/member-code";
 import { Alert, Badge, PageHeader } from "@/components/ui/misc";
 import { requireUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
@@ -29,7 +30,7 @@ export default async function SettingsPage() {
   const exports = requests.filter((r) => r.type === "export" && r.status === "completed");
   return (
     <>
-      <PageHeader title="Settings & privacy" />
+      <PageHeader title="Settings & privacy" actions={user.memberCode ? <MemberCode code={user.memberCode} /> : undefined} />
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader><div><CardTitle>Notifications</CardTitle><CardDescription>Choose how we remind you. Security emails (verification, password reset) are always sent.</CardDescription></div></CardHeader>
@@ -38,7 +39,7 @@ export default async function SettingsPage() {
               <fieldset className="space-y-3"><legend className="text-sm font-semibold">Channels</legend>
                 <Checkbox id="emailEnabled" name="emailEnabled" defaultChecked={p.emailEnabled} label="Email" />
                 <Checkbox id="inAppEnabled" name="inAppEnabled" defaultChecked={p.inAppEnabled} label="In-app notifications" />
-                <Checkbox id="smsEnabled" name="smsEnabled" defaultChecked={p.smsEnabled} label={<>SMS reminders one day before a task is due {!profile?.phone && <span className="text-xs text-warning-700">(add a phone number in your profile first)</span>}{!sms.configured && <span className="block text-xs text-muted">SMS delivery isn&apos;t enabled on this platform yet; your choice will apply once it is.</span>}</>} />
+                {sms.configured && <Checkbox id="smsEnabled" name="smsEnabled" defaultChecked={p.smsEnabled} label={<>SMS reminders one day before a task is due {!profile?.phone && <span className="text-xs text-warning-700">(add a phone number in your profile first)</span>}{!sms.configured && <span className="block text-xs text-muted">SMS delivery isn&apos;t enabled on this platform yet; your choice will apply once it is.</span>}</>} />}
               </fieldset>
               <fieldset className="space-y-3"><legend className="text-sm font-semibold">Topics</legend>
                 <Checkbox id="milestoneReminders" name="milestoneReminders" defaultChecked={p.milestoneReminders} label="Upcoming task reminders (7 days, 1 day and on the due date)" />

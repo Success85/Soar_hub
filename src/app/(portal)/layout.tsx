@@ -7,11 +7,12 @@ import { APPLICANT_NAV, logoutAction, switcherFor, unreadCount } from "@/lib/por
 const SHARED = ["/notifications", "/profile", "/settings"];
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
-  const user = await requireUser();
+  const path = (await headers()).get("x-pathname") ?? "";
+  // Account settings stay reachable without a membership (privacy rights, password, deletion).
+  const user = await requireUser({ allowUnpaid: path.startsWith("/settings"), next: path || undefined });
   const unread = await unreadCount(user.id);
   const isApplicant = user.roles.includes("applicant");
   if (!isApplicant) {
-    const path = (await headers()).get("x-pathname") ?? "";
     if (!SHARED.some((p) => path.startsWith(p))) redirect(user.permissions.has("admin.access") ? "/admin" : "/reviewer");
     const staffNav: NavGroup[] = [
       { items: [{ href: user.permissions.has("admin.access") ? "/admin" : "/reviewer", label: "Back to workspace", icon: "dashboard" }] },

@@ -24,7 +24,7 @@ const STEPS = [
 const FEATURES = [
   { icon: Search, title: "Verified scholarship discovery", body: "Every published opportunity links to its official source with the date it was last verified." },
   { icon: BadgeCheck, title: "Explainable eligibility", body: "See which criteria you meet, which need more information, and what you can do about each one." },
-  { icon: CalendarClock, title: "Deadline planner", body: "Milestones scheduled backward from the deadline, with email and SMS reminders so nothing slips." },
+  { icon: CalendarClock, title: "Deadline planner", body: "Milestones scheduled backward from the deadline, with email reminders so nothing slips." },
   { icon: FileText, title: "Secure document workspace", body: "Private storage, version history and reviewer comments linked to the exact passage." },
   { icon: NotebookPen, title: "Essay workspace & answer bank", body: "Draft in your own voice, keep your best stories, and find them again for new prompts." },
   { icon: UserRoundCheck, title: "Referee management", body: "Send referees a secure, time-limited upload link — no account needed — and track their status." },
@@ -65,7 +65,7 @@ export default async function HomePage() {
                 <Link href="/register">Get application support</Link>
               </Button>
             </div>
-            <p className="mt-6 text-sm text-ivory/60">Free for applicants. We help you prepare — universities make every final decision.</p>
+            <p className="mt-6 text-sm text-ivory/60">Affordable membership. We help you prepare — universities make every final decision.</p>
           </div>
           <div aria-hidden className="relative hidden lg:block">
             <div className="rounded-2xl border border-white/10 bg-white p-5 text-navy-900 shadow-2xl">
@@ -105,7 +105,7 @@ export default async function HomePage() {
         <div className="mx-auto grid max-w-6xl grid-cols-1 divide-y divide-line px-4 sm:grid-cols-3 sm:divide-x sm:divide-y-0 sm:px-6">
           {[
             [String(total), total === 1 ? "verified opportunity open now" : "verified opportunities open now"],
-            [String(resCount?.c ?? 0), "free learning guides"],
+            [String(resCount?.c ?? 0), "learning guides"],
             ["100%", "of AI feedback checked by a human"],
           ].map(([n, l]) => (
             <div key={l} className="flex items-baseline gap-3 py-5 sm:justify-center">
@@ -131,7 +131,7 @@ export default async function HomePage() {
           <li className="flex flex-col justify-between rounded-[var(--radius-card)] bg-gold-100 p-5">
             <p className="font-display text-xl text-navy-900">Ready to start?</p>
             <Button asChild className="mt-4 self-start">
-              <Link href="/register">Create your free account</Link>
+              <Link href="/register">Create your account</Link>
             </Button>
           </li>
         </ol>
@@ -267,7 +267,7 @@ export default async function HomePage() {
           </div>
           <Button asChild size="lg">
             <Link href="/register">
-              Create a free account <ArrowRight aria-hidden />
+              Create your account <ArrowRight aria-hidden />
             </Link>
           </Button>
         </div>

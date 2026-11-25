@@ -26,6 +26,7 @@ import {
   UserRoundCheck,
   Users,
   X,
+  CreditCard,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -53,6 +54,7 @@ const ICONS: Record<string, LucideIcon> = {
   ai: Bot,
   content: BookOpen,
   analytics: BarChart3,
+  payments: CreditCard,
   roles: ShieldCheck,
   audit: History,
   list: ListChecks,

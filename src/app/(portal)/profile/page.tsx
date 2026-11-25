@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ProfileForm } from "@/components/profile-form";
 import { Card, CardBody } from "@/components/ui/card";
+import { MemberCode } from "@/components/member-code";
 import { PageHeader, Progress } from "@/components/ui/misc";
 import { requireUser } from "@/lib/auth/session";
 import { calculateAge } from "@/lib/engine/eligibility";
@@ -16,7 +17,7 @@ export default async function ProfilePage() {
   const isApplicant = user.roles.includes("applicant");
   return (
     <>
-      <PageHeader title="Your profile" description="Keep this up to date. When you change details that affect eligibility, your results are recalculated automatically." />
+      <PageHeader title="Your profile" description="Keep this up to date. When you change details that affect eligibility, your results are recalculated automatically." actions={user.memberCode ? <MemberCode code={user.memberCode} /> : undefined} />
       {isApplicant && (
         <Card className="mb-6">
           <CardBody className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center">

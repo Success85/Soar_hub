@@ -8,7 +8,7 @@ const email = `e2e.applicant.${stamp}@example.com`;
 const password = "Bright-future-2026";
 const refereeEmail = `e2e.referee.${stamp}@example.com`;
 
-test("applicant: register → verify → onboard → eligibility → plan → documents → referee → submit", async ({ page, browser }) => {
+test("applicant: register → verify → pay → onboard → eligibility → plan → documents → referee → submit", async ({ page, browser }) => {
   // 1. Register
   await page.goto("/register");
   await page.getByLabel("First name").fill("Amina");
@@ -29,7 +29,22 @@ test("applicant: register → verify → onboard → eligibility → plan → do
   // 2. Verify email via the link that was emailed
   await page.goto(lastLink(email, "/verify-email?token="));
   await expect(page.getByRole("heading", { name: "Email verified" })).toBeVisible();
+  const memberCode = (await page.locator(".font-mono", { hasText: /^SOAR-\d{2}-/ }).first().innerText()).trim();
+  expect(memberCode).toMatch(/^SOAR-\d{2}-[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{6}$/);
+  expect(lastLink(email, "/dashboard")).toContain("/dashboard"); // welcome email with the member ID was sent
   await page.getByRole("link", { name: "Continue" }).click();
+
+  // 2b. Membership paywall → pay through (mock) Flutterwave → membership active
+  await expect(page).toHaveURL(/\/membership/);
+  await page.goto("/scholarships");
+  await expect(page).toHaveURL(/\/membership\?next=%2Fscholarships/); // member-only page
+  await page.getByRole("button", { name: /Pay ₦[\d,]+ and join/ }).click();
+  await expect(page.getByRole("heading", { name: "Payment successful. Welcome!" })).toBeVisible();
+  await expect(page.getByText(/Your membership is active until/)).toBeVisible();
+  await page.goto("/membership");
+  await expect(page.getByText(/Your membership is active until/)).toBeVisible();
+  await expect(page.getByText("successful").first()).toBeVisible(); // receipt listed
+  await page.goto("/onboarding");
 
   // 3. Onboarding
   await expect(page.getByRole("heading", { name: /Let's get you ready/ })).toBeVisible();
@@ -66,6 +81,7 @@ test("applicant: register → verify → onboard → eligibility → plan → do
   await page.getByRole("button", { name: /Finish and go to my dashboard/ }).click();
   await expect(page).toHaveURL(/dashboard/);
   await expect(page.getByRole("heading", { name: /Welcome back, Amina/ })).toBeVisible();
+  await expect(page.getByText(memberCode)).toBeVisible();
 
   // 4. Explore scholarships and open a real partner listing (ALU, open window)
   await page.goto("/scholarships?q=African+Leadership+University");
@@ -150,15 +166,16 @@ test("applicant: register → verify → onboard → eligibility → plan → do
   await expect(page.getByText("Submitted").first()).toBeVisible();
 
   // 10. Complete every task in the planner (list view)
-  await page.goto(`/planner?application=${applicationId}&filter=upcoming`);
+  await page.goto(`/planner?application=${applicationId}&filter=all`); // "all": near a deadline some tasks are already overdue
   const buttons = page.getByRole("button", { name: "Mark complete" });
   await expect(buttons.first()).toBeVisible();
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 80; i++) {
     const before = await buttons.count();
     if (before === 0) break;
     await buttons.first().click();
     await expect.poll(() => buttons.count(), { timeout: 30_000 }).toBeLessThan(before);
   }
+  await expect(buttons).toHaveCount(0); // every task done
   await page.goto(`/planner?application=${applicationId}&view=calendar`);
   await noErrorBoundary(page);
   await page.goto(`/planner?application=${applicationId}&view=timeline`);

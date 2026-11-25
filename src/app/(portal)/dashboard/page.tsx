@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { MemberCode } from "@/components/member-code";
 import { ArrowRight, Bookmark, CalendarClock, FileUp, GraduationCap, MessageSquare, NotebookPen, Sparkles, UserRoundCheck } from "lucide-react";
 import { AppStatusBadge, MilestoneBadge, RefereeStatusBadge, VerdictBadge } from "@/components/status";
 import { DeadlineBadge } from "@/components/scholarship-card";
@@ -28,6 +29,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <p className="text-sm font-medium text-gold-700">{greet}</p>
           <h1 className="font-display text-3xl sm:text-4xl">Welcome back, {user.firstName}</h1>
           <p className="mt-1 text-muted">Here&apos;s where your scholarship journey stands today.</p>
+          {user.memberCode && <MemberCode code={user.memberCode} className="mt-3" />}
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="gold"><Link href="/scholarships"><GraduationCap aria-hidden /> Find scholarships</Link></Button>

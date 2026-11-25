@@ -37,7 +37,7 @@ export const resourceSchema = z.object({
   type: z.enum(CONTENT_TYPES.map((t) => t.value) as [string, ...string[]]),
   description: optText,
   body: z.string().max(100000).default(""),
-  featuredImageUrl: optText.refine((v) => !v || /^(https:\/\/|\/downloads\/)/.test(v), "Use an https:// image URL (or a /downloads/ file)"),
+  featuredImageUrl: optText.refine((v) => !v || /^(https:\/\/|\/previews\/)/.test(v), "Use an https:// image URL (or a /previews/ image)"),
   externalUrl: optText.refine((v) => !v || /^(https:\/\/|\/downloads\/)/.test(v), "Use an https:// link (or a /downloads/ file)"),
   authorName: optText,
   status: z.enum(["draft", "published", "archived"]),

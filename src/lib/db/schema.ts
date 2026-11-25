@@ -199,11 +199,13 @@ export const users = pgTable(
     failedLoginCount: integer("failed_login_count").notNull().default(0),
     lockedUntil: ts("locked_until"),
     isDemo: boolean("is_demo").notNull().default(false),
+    /** Permanent member ID (e.g. SOAR-26-7K4QXM), assigned when the email is verified. */
+    memberCode: varchar("member_code", { length: 20 }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
     deletedAt: ts("deleted_at"),
   },
-  (t) => [uniqueIndex("users_email_lower_uq").on(sql`lower(${t.email})`), index("users_created_idx").on(t.createdAt)],
+  (t) => [uniqueIndex("users_email_lower_uq").on(sql`lower(${t.email})`), uniqueIndex("users_member_code_uq").on(t.memberCode), index("users_created_idx").on(t.createdAt)],
 );
 
 export const sessions = pgTable(
@@ -1217,4 +1219,54 @@ export const analyticsDaily = pgTable(
     computedAt: updatedAt(),
   },
   (t) => [primaryKey({ columns: [t.day, t.metric, t.dimension] })],
+);
+
+/* ------------------------------------------------------------------ */
+/* Payments & memberships (Flutterwave)                                */
+/* ------------------------------------------------------------------ */
+
+export const payments = pgTable(
+  "payments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
+    /** Our reference, sent to Flutterwave as tx_ref. */
+    txRef: varchar("tx_ref", { length: 80 }).notNull(),
+    provider: varchar("provider", { length: 30 }).notNull().default("flutterwave"),
+    purpose: varchar("purpose", { length: 30 }).notNull().default("membership"),
+    amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+    currency: varchar("currency", { length: 3 }).notNull().default("NGN"),
+    /** pending → successful | failed | cancelled */
+    status: varchar("status", { length: 20 }).notNull().default("pending"),
+    providerTransactionId: varchar("provider_transaction_id", { length: 80 }),
+    paymentMethod: varchar("payment_method", { length: 40 }),
+    /** Months of membership this payment buys (0 = lifetime), fixed at checkout time. */
+    membershipMonths: integer("membership_months").notNull().default(12),
+    providerResponse: jsonb("provider_response"),
+    failureReason: text("failure_reason"),
+    createdAt: createdAt(),
+    paidAt: ts("paid_at"),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("payments_tx_ref_uq").on(t.txRef), uniqueIndex("payments_provider_tx_uq").on(t.provider, t.providerTransactionId), index("payments_user_idx").on(t.userId, t.createdAt)],
+);
+
+export const memberships = pgTable(
+  "memberships",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
+    plan: varchar("plan", { length: 30 }).notNull().default("standard"),
+    startsAt: ts("starts_at").notNull(),
+    /** null = lifetime */
+    expiresAt: ts("expires_at"),
+    /** flutterwave | admin_grant | demo */
+    source: varchar("source", { length: 30 }).notNull(),
+    paymentId: uuid("payment_id").references(() => payments.id, { onDelete: "set null" }),
+    grantedBy: uuid("granted_by").references(() => users.id, { onDelete: "set null" }),
+    note: text("note"),
+    revokedAt: ts("revoked_at"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("memberships_user_idx").on(t.userId, t.expiresAt), uniqueIndex("memberships_payment_uq").on(t.paymentId)],
 );

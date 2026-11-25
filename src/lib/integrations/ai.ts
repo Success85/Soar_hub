@@ -152,8 +152,9 @@ async function anthropicCritique(input: CritiqueInput): Promise<CritiqueOutput> 
     if (e instanceof Anthropic.AuthenticationError) throw new ProviderError("anthropic", "Invalid AI_API_KEY for Anthropic.", false);
     if (e instanceof Anthropic.BadRequestError) throw new ProviderError("anthropic", `Bad request: ${e.message}`, false);
     if (e instanceof Anthropic.RateLimitError) throw new ProviderError("anthropic", "Rate limited by Anthropic.", true);
-    if (e instanceof Anthropic.APIError) throw new ProviderError("anthropic", `Anthropic API error ${e.status}`, (e.status ?? 500) >= 500);
+    // APIConnectionError extends APIError, so it must be checked first.
     if (e instanceof Anthropic.APIConnectionError) throw new ProviderError("anthropic", "Could not reach Anthropic.", true);
+    if (e instanceof Anthropic.APIError) throw new ProviderError("anthropic", `Anthropic API error ${e.status}: ${e.message}`.slice(0, 300), (e.status ?? 500) >= 500);
     throw e;
   }
 }

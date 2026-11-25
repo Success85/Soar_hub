@@ -5,12 +5,13 @@ import { FAQ_SECTIONS, HOME_FAQ } from "@/lib/data/faq";
 import { LEARNING_RESOURCES } from "@/lib/data/learning-resources";
 
 const pub = (url: string) => join(process.cwd(), "public", url);
+const memberFile = (url: string) => join(process.cwd(), "content", url); // /downloads/x → content/downloads/x (served to members only)
 
 describe("learning resources dataset", () => {
-  it("every resource has a downloadable file and a preview that exist in /public", () => {
+  it("every resource has a member-only file and a public preview that exist", () => {
     for (const r of LEARNING_RESOURCES) {
       expect(r.file.url.startsWith("/downloads/"), r.slug).toBe(true);
-      expect(existsSync(pub(r.file.url)), r.file.url).toBe(true);
+      expect(existsSync(memberFile(r.file.url)), r.file.url).toBe(true);
       expect(existsSync(pub(r.file.preview)), r.file.preview).toBe(true);
       expect(r.body.length, r.slug).toBeGreaterThan(800);
     }
@@ -27,7 +28,7 @@ describe("FAQ", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
   it("internal links point at pages that exist", () => {
-    const known = ["/guide", "/register", "/scholarships", "/privacy", "/contact", ...LEARNING_RESOURCES.map((r) => `/resources/${r.slug}`)];
+    const known = ["/guide", "/register", "/membership", "/scholarships", "/privacy", "/contact", ...LEARNING_RESOURCES.map((r) => `/resources/${r.slug}`)];
     for (const i of items) {
       for (const [, href] of i.a.matchAll(/\]\((\/[^)#]*)/g)) expect(known, `${i.id} → ${href}`).toContain(href);
     }

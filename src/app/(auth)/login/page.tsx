@@ -36,7 +36,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <SubmitButton size="lg" className="w-full" pendingLabel="Signing in…">Sign in</SubmitButton>
       </ActionForm>
       <p className="mt-6 text-center text-sm text-muted">
-        New to SOAR Hub? <Link href="/register" className="font-semibold text-royal-700 hover:underline">Create a free account</Link>
+        New to SOAR Hub? <Link href="/register" className="font-semibold text-royal-700 hover:underline">Create an account</Link>
       </p>
     </>
   );

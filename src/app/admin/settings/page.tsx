@@ -1,6 +1,6 @@
 import { desc } from "drizzle-orm";
-import { runJobAction, saveSettingsAction } from "@/app/actions/admin";
-import { ActionButton, ActionForm, SubmitButton } from "@/components/forms/action-form";
+import { runJobAction, saveSettingsAction, sendTestEmailAction, testAiAction } from "@/app/actions/admin";
+import { ActionButton, ActionForm, FieldError, SubmitButton } from "@/components/forms/action-form";
 import { Card, CardBody, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Checkbox, Input, Label, Textarea } from "@/components/ui/form";
 import { Badge, PageHeader, Table, Td, Th } from "@/components/ui/misc";
@@ -10,6 +10,7 @@ import { jobRuns } from "@/lib/db/schema";
 import { env } from "@/lib/env";
 import { aiStatus } from "@/lib/integrations/ai";
 import { emailStatus } from "@/lib/integrations/email";
+import { flutterwaveStatus } from "@/lib/integrations/flutterwave";
 import { embeddingsStatus } from "@/lib/integrations/embeddings";
 import { malwareStatus } from "@/lib/integrations/malware";
 import { smsStatus } from "@/lib/integrations/sms";
@@ -26,7 +27,8 @@ export default async function SettingsAdmin() {
   const s = await getSettings();
   const runs = await db.select().from(jobRuns).orderBy(desc(jobRuns.startedAt)).limit(20);
   const integrations = [
-    ["Email", emailStatus(), "EMAIL_PROVIDER, EMAIL_PROVIDER_API_KEY, EMAIL_FROM"],
+    ["Email", emailStatus(), "EMAIL_PROVIDER, EMAIL_PROVIDER_API_KEY or SMTP_USER/SMTP_PASSWORD, EMAIL_FROM"],
+    ["Payments", flutterwaveStatus(), "FLW_SECRET_KEY, FLW_SECRET_HASH"],
     ["SMS", smsStatus(), "SMS_PROVIDER, SMS_PROVIDER_API_KEY, SMS_PROVIDER_USERNAME"],
     ["AI critique", aiStatus(), "AI_PROVIDER, AI_API_KEY, AI_MODEL"],
     ["Semantic search", embeddingsStatus(), "EMBEDDINGS_PROVIDER, EMBEDDINGS_API_KEY"],
@@ -44,11 +46,38 @@ export default async function SettingsAdmin() {
             {integrations.map(([name, st, vars]) => (
               <li key={name} className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
                 <div><p className="font-semibold">{name}</p><p className="text-xs text-muted">{st.provider}{"model" in st && st.model ? ` · ${st.model}` : ""} · variables: {vars}</p></div>
-                {st.configured ? <Badge tone="success">Active</Badge> : <Badge tone="warning">Needs: {st.missing.join(", ")}</Badge>}
+                {st.configured ? <Badge tone="success">Active</Badge> : name === "SMS" ? <Badge>Off (not used in this version)</Badge> : <Badge tone="warning">Needs: {st.missing.join(", ")}</Badge>}
               </li>
             ))}
           </ul>
           <p className="mt-3 text-xs text-muted">Session idle timeout: {env.SESSION_IDLE_MINUTES} minutes (SESSION_IDLE_MINUTES). App URL: {env.APP_URL}.</p>
+        </CardBody>
+      </Card>
+
+      <Card className="mb-6">
+        <CardHeader><div><CardTitle>Test email delivery</CardTitle><CardDescription>Sends one email immediately through the configured provider ({emailStatus().provider}), from <span className="font-mono">{env.EMAIL_FROM}</span>.</CardDescription></div></CardHeader>
+        <CardBody>
+          {env.EMAIL_PROVIDER === "smtp" && env.SMTP_USER && !env.EMAIL_FROM.toLowerCase().includes(env.SMTP_USER.toLowerCase()) && (
+            <p className="mb-4 rounded-lg border border-warning-700/30 bg-amber-50 p-3 text-sm text-amber-900">Gmail always sends as the signed-in account. Set EMAIL_FROM to <span className="font-mono">SOAR Hub &lt;{env.SMTP_USER}&gt;</span> so the sender shown matches.</p>
+          )}
+          {/your-domain/.test(env.EMAIL_FROM) && env.EMAIL_PROVIDER !== "console" && env.EMAIL_PROVIDER !== "smtp" && (
+            <p className="mb-4 rounded-lg border border-warning-700/30 bg-amber-50 p-3 text-sm text-amber-900">EMAIL_FROM still uses the placeholder domain. Set it to an address on a domain you verified with your provider (or <span className="font-mono">SOAR Hub &lt;onboarding@resend.dev&gt;</span> for Resend testing).</p>
+          )}
+          <ActionForm action={sendTestEmailAction} className="flex flex-wrap items-end gap-3">
+            <div className="min-w-64 flex-1 space-y-1"><Label htmlFor="to">Send to</Label><Input id="to" name="to" type="email" placeholder="Leave empty to send to yourself" /><FieldError name="to" /></div>
+            <SubmitButton variant="secondary" pendingLabel="Sending…">Send test email</SubmitButton>
+          </ActionForm>
+        </CardBody>
+      </Card>
+
+      <Card className="mb-6">
+        <CardHeader><div><CardTitle>Test AI critique</CardTitle><CardDescription>Runs one real critique on a short built-in sample essay ({aiStatus().provider}{aiStatus().model ? `, ${aiStatus().model}` : ""}). Costs a few US cents.</CardDescription></div></CardHeader>
+        <CardBody>
+          {aiStatus().configured ? (
+            <ActionForm action={testAiAction}><SubmitButton variant="secondary" pendingLabel="Asking the AI… (up to a minute)">Run a test critique</SubmitButton></ActionForm>
+          ) : (
+            <p className="text-sm text-muted">Set <span className="font-mono">AI_PROVIDER=anthropic</span> and <span className="font-mono">AI_API_KEY</span> in <span className="font-mono">.env</span>, restart the app, then test here.</p>
+          )}
         </CardBody>
       </Card>
 
@@ -77,9 +106,17 @@ export default async function SettingsAdmin() {
             <F name="timezone" label="Platform timezone"><Input id="timezone" name="timezone" defaultValue={s.timezone} /></F>
             <div className="space-y-3 md:col-span-2">
               <input type="hidden" name="$overdue_reminders_enabled" value="1" /><Checkbox id="overdue_reminders_enabled" name="overdue_reminders_enabled" defaultChecked={s.overdue_reminders_enabled} label="Send overdue task reminders" />
-              <input type="hidden" name="$sms_enabled" value="1" /><Checkbox id="sms_enabled" name="sms_enabled" defaultChecked={s.sms_enabled} label="Allow SMS reminders (for applicants who opt in)" />
+              {smsStatus().configured && <><input type="hidden" name="$sms_enabled" value="1" /><Checkbox id="sms_enabled" name="sms_enabled" defaultChecked={s.sms_enabled} label="Allow SMS reminders (for applicants who opt in)" /></>}
               <input type="hidden" name="$notify_admin_on_referee_submission" value="1" /><Checkbox id="notify_admin_on_referee_submission" name="notify_admin_on_referee_submission" defaultChecked={s.notify_admin_on_referee_submission} label="Email the admin alert address when a referee submits" />
             </div>
+          </CardBody>
+        </Card>
+        <Card>
+          <CardHeader><div><CardTitle>Membership & payments</CardTitle><CardDescription>Members pay through Flutterwave to use everything beyond the home, About, Contact and FAQ pages. Staff accounts never pay.</CardDescription></div></CardHeader>
+          <CardBody className="grid gap-4 md:grid-cols-2">
+            <div className="md:col-span-2"><input type="hidden" name="$membership_required" value="1" /><Checkbox id="membership_required" name="membership_required" defaultChecked={s.membership_required} label="Require a paid membership (turn off to open every feature to all signed-in users)" /></div>
+            <F name="membership_price_ngn" label="Price (₦)" hint="What members pay through Flutterwave."><Input id="membership_price_ngn" name="membership_price_ngn" type="number" min={100} step={50} defaultValue={s.membership_price_ngn} /></F>
+            <F name="membership_duration_months" label="Membership length (months)" hint="12 = yearly. 0 = one-time payment for lifetime access."><Input id="membership_duration_months" name="membership_duration_months" type="number" min={0} max={120} defaultValue={s.membership_duration_months} /></F>
           </CardBody>
         </Card>
         <Card>

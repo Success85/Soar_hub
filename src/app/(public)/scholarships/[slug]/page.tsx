@@ -12,7 +12,7 @@ import { VerdictBadge } from "@/components/status";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, Badge } from "@/components/ui/misc";
-import { getCurrentUser } from "@/lib/auth/session";
+import { getCurrentUser, requireMemberPage } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { applications, savedScholarships } from "@/lib/db/schema";
 import { describeRequirement } from "@/lib/engine/eligibility";
@@ -40,6 +40,7 @@ function ShortRequirement({ c }: { c: { fieldKey: string; operator: never; requi
 }
 
 export default async function ScholarshipDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+  await requireMemberPage(`/scholarships/${(await params).slug}`);
   const { slug } = await params;
   const [b, user] = await Promise.all([getScholarshipBundle({ slug }), getCurrentUser()]);
   const canPreview = !!user && user.permissions.has("scholarships.manage");

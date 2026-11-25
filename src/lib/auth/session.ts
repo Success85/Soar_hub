@@ -19,6 +19,10 @@ export interface CurrentUser {
   firstName: string;
   lastName: string;
   emailVerified: boolean;
+  /** Permanent member ID, e.g. SOAR-26-7K4QXM (set once the email is verified). */
+  memberCode?: string | null;
+  /** Can use member-only (paid) features: staff, an active membership, or the paywall switched off. */
+  memberAccess?: boolean;
   status: string;
   roles: Role[];
   permissions: Set<string>;
@@ -97,12 +101,16 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     await db.update(sessions).set({ lastSeenAt: new Date(now) }).where(eq(sessions.id, row.session.id));
   }
   const access = await loadAccess(row.user.id);
+  const { hasMemberAccess } = await import("@/lib/services/membership");
+  const memberAccess = await hasMemberAccess(row.user.id, access.roles);
   return {
     id: row.user.id,
     email: row.user.email,
     firstName: row.user.firstName,
     lastName: row.user.lastName,
     emailVerified: !!row.user.emailVerifiedAt,
+    memberCode: row.user.memberCode,
+    memberAccess,
     status: row.user.status,
     roles: access.roles,
     permissions: access.permissions,
@@ -110,11 +118,25 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   };
 });
 
-/** For pages/layouts: redirects to login (or verification) instead of throwing. */
-export async function requireUser(opts: { verified?: boolean; next?: string } = {}): Promise<CurrentUser> {
+/**
+ * For pages/layouts: redirects to login (or verification, or the membership page) instead of throwing.
+ * Pages marked `verified: false` (account settings, privacy) are account management and stay open without
+ * a membership; `allowUnpaid` opens a page to verified non-members (e.g. the membership page).
+ */
+export async function requireUser(opts: { verified?: boolean; next?: string; allowUnpaid?: boolean } = {}): Promise<CurrentUser> {
   const user = await getCurrentUser();
   if (!user) redirect(`/login${opts.next ? `?next=${encodeURIComponent(opts.next)}` : ""}`);
   if (opts.verified !== false && !user.emailVerified) redirect("/verify-email/pending");
+  if (opts.verified !== false && !opts.allowUnpaid && user.memberAccess === false) redirect(`/membership${opts.next ? `?next=${encodeURIComponent(opts.next)}` : ""}`);
+  return user;
+}
+
+/** For member-only pages outside the portal (scholarships, guide, resources): anyone without access goes to /membership. */
+export async function requireMemberPage(next: string): Promise<CurrentUser> {
+  const user = await getCurrentUser();
+  if (!user) redirect(`/membership?next=${encodeURIComponent(next)}`);
+  if (!user.emailVerified) redirect("/verify-email/pending");
+  if (user.memberAccess === false) redirect(`/membership?next=${encodeURIComponent(next)}`);
   return user;
 }
 
@@ -125,10 +147,11 @@ export async function requirePermissionPage(permission: Permission, next?: strin
 }
 
 /** For server actions / route handlers: throws typed errors. */
-export async function assertUser(opts: { verified?: boolean } = {}): Promise<CurrentUser> {
+export async function assertUser(opts: { verified?: boolean; allowUnpaid?: boolean } = {}): Promise<CurrentUser> {
   const user = await getCurrentUser();
   if (!user) throw new UnauthorizedError();
   if (opts.verified !== false && !user.emailVerified) throw new ForbiddenError("Please verify your email address first.");
+  if (opts.verified !== false && !opts.allowUnpaid && user.memberAccess === false) throw new ForbiddenError("This feature needs an active SOAR Hub membership.");
   return user;
 }
 

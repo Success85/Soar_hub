@@ -206,3 +206,16 @@ export async function preferencesAction(_: unknown, fd: FormData): Promise<Actio
     return toActionError(e);
   }
 }
+
+/** Starts a Flutterwave checkout for membership and sends the browser to the hosted payment page. */
+export async function startMembershipCheckoutAction(): Promise<ActionResult> {
+  let link: string;
+  try {
+    const user = await assertUser({ allowUnpaid: true });
+    const { startMembershipCheckout } = await import("@/lib/services/membership");
+    ({ link } = await startMembershipCheckout(user));
+  } catch (e) {
+    return toActionError(e);
+  }
+  redirect(link);
+}

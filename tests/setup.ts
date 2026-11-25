@@ -7,6 +7,9 @@ process.env.STORAGE_DRIVER = "local";
 process.env.LOCAL_STORAGE_DIR = ".dev-storage-test";
 process.env.DISABLE_RATE_LIMIT ??= "true";
 process.env.AI_PROVIDER ??= "none";
+process.env.FLW_SECRET_KEY = "FLWSECK_TEST-test-key";
+process.env.FLW_SECRET_HASH = "test-webhook-hash";
+process.env.FLW_API_BASE = "https://flw.test/v3";
 
 // Minimal cookie jar so session code can run outside a Next.js request.
 const jar = new Map<string, string>();

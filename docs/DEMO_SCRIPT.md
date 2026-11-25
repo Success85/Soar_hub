@@ -68,9 +68,16 @@ for the applicant and a private/incognito one for the admin and reviewer, so bot
 ### 2.1 Sign up and verify
 1. **Get started** → fill in First name `Amina`, Last name `Bello`, an email you haven't used before (e.g.
    `amina.demo1@example.com`) and a password (e.g. `Bright-future-2026`). Tick both consent boxes → **Create account**.
-2. The "Check your inbox" page appears. Click **Open the development mailbox** → click the `/verify-email?token=…` link
+2. The "Check your inbox" page appears. Open the email in your inbox (with Gmail or Resend set up), or open
+   <http://localhost:3000/dev/mailbox> in a new tab → click the `/verify-email?token=…` link
    → **Email verified** → **Continue**.
 3. Point out that protected pages stay locked until the email is verified.
+
+### 2.1b Membership (about 1 minute)
+After verification, Amina lands on **Membership**: show the price and what members get, then **Pay ₦… and join**.
+With Flutterwave **test** keys in `.env`, pay with a Flutterwave test card (see `docs/PAYMENTS_SETUP.md`). Back on
+SOAR Hub: "Payment successful. Welcome!". No keys yet? Grant the membership instead: **Admin → Applicants → Amina →
+Membership → Grant**.
 
 ### 2.2 Onboarding (profile, about 2 minutes)
 **Start my profile**, then fill in each step and **Save and continue**:

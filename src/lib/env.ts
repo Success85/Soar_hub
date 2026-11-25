@@ -23,8 +23,13 @@ const schema = z.object({
   S3_FORCE_PATH_STYLE: z.enum(["true", "false"]).default("true"),
   LOCAL_STORAGE_DIR: z.string().default(".dev-storage"),
 
-  EMAIL_PROVIDER: z.enum(["resend", "sendgrid", "console", "none"]).default("console"),
+  EMAIL_PROVIDER: z.enum(["resend", "sendgrid", "smtp", "console", "none"]).default("console"),
   EMAIL_PROVIDER_API_KEY: z.string().optional(),
+  // SMTP (e.g. Gmail with an App Password): EMAIL_PROVIDER=smtp
+  SMTP_HOST: z.string().default("smtp.gmail.com"),
+  SMTP_PORT: z.coerce.number().int().positive().default(465),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
   EMAIL_FROM: z.string().default("SOAR Hub <no-reply@localhost>"),
   EMAIL_WEBHOOK_SECRET: z.string().optional(),
 
@@ -33,6 +38,11 @@ const schema = z.object({
   SMS_PROVIDER_USERNAME: z.string().optional(),
   SMS_SENDER_ID: z.string().optional(),
   SMS_WEBHOOK_SECRET: z.string().optional(),
+
+  // Payments (Flutterwave). Secret key from Dashboard → Settings → API keys; secret hash from Settings → Webhooks.
+  FLW_SECRET_KEY: z.string().optional(),
+  FLW_SECRET_HASH: z.string().optional(),
+  FLW_API_BASE: z.string().url().default("https://api.flutterwave.com/v3"),
 
   AI_PROVIDER: z.enum(["anthropic", "openai", "none"]).default("none"),
   AI_API_KEY: z.string().optional(),
@@ -63,6 +73,7 @@ function load(): Env {
     if (!process.env.CRON_SECRET) problems.push("CRON_SECRET must be set");
     if (env.STORAGE_DRIVER === "local") problems.push("STORAGE_DRIVER=local is not permitted in production (use s3)");
     if (env.EMAIL_PROVIDER === "console") problems.push("EMAIL_PROVIDER=console is not permitted in production");
+    if (env.EMAIL_PROVIDER === "smtp" && (!env.SMTP_USER || !env.SMTP_PASSWORD)) problems.push("EMAIL_PROVIDER=smtp needs SMTP_USER and SMTP_PASSWORD");
     if (problems.length) throw new Error("Production configuration error: " + problems.join("; "));
   }
   return env;

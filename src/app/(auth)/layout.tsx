@@ -9,7 +9,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <Logo light />
         <div className="relative">
           <p className="font-display text-4xl leading-tight text-ivory">Talent is everywhere.<br />Let&apos;s make sure opportunity finds you.</p>
-          <p className="mt-4 max-w-md text-ivory/70">Plan, prepare and submit your scholarship applications with structured guidance — at no cost.</p>
+          <p className="mt-4 max-w-md text-ivory/70">Plan, prepare and submit your scholarship applications with structured guidance.</p>
         </div>
         <p className="relative text-xs text-ivory/50">SOAR Hub supports your preparation. It never guarantees selection.</p>
       </aside>

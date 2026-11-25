@@ -2,7 +2,9 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { login } from "./helpers";
 
-const PUBLIC = ["/", "/scholarships", "/scholarships/mcf-alu-rwanda", "/about", "/resources", "/resources/statement-of-purpose-sample-explained", "/guide", "/faq", "/contact", "/login", "/register", "/privacy"];
+const PUBLIC = ["/", "/membership", "/about", "/faq", "/contact", "/login", "/register", "/privacy"];
+// Member-only pages, checked while signed in as the demo applicant (a member).
+const MEMBER = ["/scholarships", "/scholarships/mcf-alu-rwanda", "/resources", "/resources/statement-of-purpose-sample-explained", "/guide", "/membership"];
 
 for (const path of PUBLIC) {
   test(`axe: ${path} has no serious or critical violations`, async ({ page }) => {
@@ -13,9 +15,20 @@ for (const path of PUBLIC) {
   });
 }
 
-test("axe: applicant dashboard and eligibility pages", async ({ page }) => {
+test("member-only pages send visitors to the membership page", async ({ page }) => {
+  for (const path of ["/scholarships", "/guide", "/resources", "/dashboard"]) {
+    await page.goto(path);
+    await expect(page).toHaveURL(/\/(membership|login)/);
+  }
+  const file = await page.request.get("/downloads/alu-cv-template.pdf", { maxRedirects: 0 });
+  expect(file.status()).toBe(307);
+});
+
+test("axe: applicant dashboard, member pages and eligibility pages", async ({ page }) => {
   await login(page, "applicant@demo.soarhub.ng");
-  for (const path of ["/dashboard", "/planner", "/documents", "/profile"]) {
+  const pdf = await page.request.get("/downloads/alu-cv-template.pdf");
+  expect(pdf.headers()["content-type"]).toBe("application/pdf");
+  for (const path of ["/dashboard", "/planner", "/documents", "/profile", ...MEMBER]) {
     await page.goto(path);
     const results = await new AxeBuilder({ page: page as never }).withTags(["wcag2a", "wcag2aa"]).analyze();
     const serious = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");

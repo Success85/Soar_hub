@@ -7,6 +7,7 @@
  * generated and printed once. Change it after first login.
  */
 import "dotenv/config";
+import { assignMemberCode } from "@/lib/services/member-code";
 import { randomBytes } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
 import { db, sqlClient } from "@/lib/db";
@@ -34,6 +35,7 @@ async function main() {
   } else if (process.env.ADMIN_PASSWORD) {
     await db.update(users).set({ passwordHash: await hashPassword(password) }).where(eq(users.id, id));
   }
+  await assignMemberCode(id);
   for (const role of ["super_admin", "admin", "reviewer"] as const) await db.insert(userRoles).values({ userId: id, role }).onConflictDoNothing();
   await db.insert(auditLogs).values({ eventType: "role.granted", actorRole: "cli", targetType: "user", targetId: id, newState: { roles: ["super_admin", "admin", "reviewer"] }, metadata: { via: "create-admin script" } });
   console.log(`Super administrator ready: ${email}`);

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { requireMemberPage } from "@/lib/auth/session";
 import { GraduationCap, LayoutGrid, Rows3, Search } from "lucide-react";
 import { ScholarshipCard, WindowBadge } from "@/components/scholarship-card";
 import { SchoolLogo } from "@/components/school-logo";
@@ -16,6 +17,7 @@ export const dynamic = "force-dynamic";
 type SP = Record<string, string | undefined>;
 
 export default async function ScholarshipsPage({ searchParams }: { searchParams: Promise<SP> }) {
+  await requireMemberPage("/scholarships");
   const sp = await searchParams;
   const view = sp.view === "table" ? "table" : "cards";
   const [result, facets, openList] = await Promise.all([

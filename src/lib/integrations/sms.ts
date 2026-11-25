@@ -44,7 +44,7 @@ export async function sendSms(to: string, message: string): Promise<SendResult> 
 
 export function smsStatus() {
   if (env.SMS_PROVIDER === "console") return { configured: true, provider: "Console (development only)", missing: [] as string[] };
-  if (env.SMS_PROVIDER === "none") return { configured: false, provider: "None (SMS disabled)", missing: ["SMS_PROVIDER", "SMS_PROVIDER_API_KEY", "SMS_PROVIDER_USERNAME"] };
+  if (env.SMS_PROVIDER === "none") return { configured: false, provider: "None: SMS is switched off", missing: ["SMS_PROVIDER", "SMS_PROVIDER_API_KEY", "SMS_PROVIDER_USERNAME"] };
   const missing = ["SMS_PROVIDER_API_KEY", "SMS_PROVIDER_USERNAME"].filter((k) => !process.env[k]);
   return { configured: missing.length === 0, provider: "Africa's Talking", missing };
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { requireMemberPage } from "@/lib/auth/session";
 import { AlertTriangle, ArrowRight, Check, CircleCheck, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -80,7 +81,8 @@ const SOURCES = [
   ["Makerere University: 2026/27 undergraduate call", "https://apply.mastercardfoundation.mak.ac.ug/announcements/28"],
 ] as const;
 
-export default function GuidePage() {
+export default async function GuidePage() {
+  await requireMemberPage("/guide");
   return (
     <>
       <section className="bg-navy-900 text-ivory">
@@ -306,7 +308,7 @@ export default function GuidePage() {
             </div>
             <div className="mt-6 flex flex-col items-start gap-4 rounded-xl bg-navy-900 p-6 text-ivory sm:flex-row sm:items-center sm:justify-between">
               <p className="text-[15px]">Right now: decide the <strong className="text-gold-400">one thing you&apos;ll do in the next 24 hours.</strong> Then go and do it.</p>
-              <Button asChild variant="gold"><Link href="/register">Create my free SOAR Hub account</Link></Button>
+              <Button asChild variant="gold"><Link href="/dashboard">Go to my dashboard</Link></Button>
             </div>
           </Section>
 

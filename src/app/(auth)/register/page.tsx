@@ -13,7 +13,7 @@ export default async function RegisterPage() {
   const settings = await getSettings();
   return (
     <>
-      <h1 className="font-display text-3xl">Create your free account</h1>
+      <h1 className="font-display text-3xl">Create your account</h1>
       <p className="mt-2 text-muted">It takes two minutes. We&apos;ll ask about your background later — and explain why.</p>
       <div className="mt-8">
         {settings.registration_open ? <RegisterForm /> : <Alert tone="warning" title="Registration is paused">New registrations are temporarily closed. Please check back soon.</Alert>}

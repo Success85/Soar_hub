@@ -12,6 +12,8 @@ import { toActionError } from "@/lib/errors";
 import { assignReviewer, setRolePermission, setUserRole, setUserStatus, unassignReviewer } from "@/lib/services/admin";
 import { transitionApplication } from "@/lib/services/applications";
 import { audit } from "@/lib/services/audit";
+import { rateLimit } from "@/lib/services/rate-limit";
+import { getSettings } from "@/lib/services/settings";
 import { deleteResource, saveCategory, saveResource } from "@/lib/services/content";
 import { previewAgainstSample } from "@/lib/services/eligibility";
 import { runJob, JOBS, type JobName } from "@/lib/services/jobs";
@@ -405,7 +407,8 @@ export async function saveSettingsAction(_: unknown, fd: FormData): Promise<Acti
       if (typeof def === "boolean") values[key] = raw === "on";
       else if (typeof def === "number") {
         const n = Number(raw);
-        if (!Number.isFinite(n) || n <= 0) return { ok: false, error: `${key.replace(/_/g, " ")} must be a positive number.` };
+        const zeroAllowed = key === "membership_duration_months"; // 0 = lifetime membership
+        if (!Number.isFinite(n) || n < 0 || (n === 0 && !zeroAllowed)) return { ok: false, error: `${key.replace(/_/g, " ")} must be a positive number.` };
         values[key] = n;
       } else if (Array.isArray(def)) {
         const list = fd.getAll(key).flatMap((v) => String(v).split(",")).map((s) => s.trim()).filter(Boolean);
@@ -421,6 +424,8 @@ export async function saveSettingsAction(_: unknown, fd: FormData): Promise<Acti
       } else values[key] = String(raw ?? "");
     }
     if (values.upload_max_mb !== undefined && Number(values.upload_max_mb) > 50) return { ok: false, error: "Upload limit can't exceed 50 MB." };
+    if (values.membership_price_ngn !== undefined && Number(values.membership_price_ngn) < 100) return { ok: false, error: "Membership price must be at least ₦100." };
+    if (values.membership_duration_months !== undefined && (!Number.isInteger(Number(values.membership_duration_months)) || Number(values.membership_duration_months) > 120)) return { ok: false, error: "Membership length must be a whole number of months (0 for lifetime, at most 120)." };
     const { previous } = await saveSettings(values as never, u.id);
     await audit({ eventType: "settings.updated", actorId: u.id, actorRole: "admin", targetType: "platform_settings", targetId: "global", previousState: previous, newState: values });
     return { ok: true, message: "Settings saved." };
@@ -449,5 +454,86 @@ export async function dataRequestAction(_: unknown, fd: FormData): Promise<Actio
     return { ok: true, message: "Request processed." };
   } catch (e) {
     return toActionError(e);
+  }
+}
+
+/** Sends one email straight through the configured provider (not the queue) so admins can check the setup. */
+export async function sendTestEmailAction(_: unknown, fd: FormData): Promise<ActionResult> {
+  try {
+    const u = await assertPermission("settings.manage");
+    const to = String(fd.get("to") ?? "").trim() || u.email;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return { ok: false, error: "Enter a valid email address.", fieldErrors: { to: "Enter a valid email address" } };
+    await rateLimit(`test-email:${u.id}`, 5, 600);
+    const { sendEmail } = await import("@/lib/integrations/email");
+    const { renderEmailHtml, appUrl } = await import("@/lib/services/notifications");
+    const platformName = (await getSettings()).platform_name;
+    const subject = `${platformName}: test email`;
+    const body = `Hi ${u.firstName},\n\nThis is a test email from ${platformName}. If you can read it, email delivery is working.\n\nSent from Admin → Settings.`;
+    const res = await sendEmail({ to, subject, text: `${body}\n\n${appUrl("/admin/settings")}`, html: renderEmailHtml(subject, body, appUrl("/admin/settings"), platformName), idempotencyKey: `test-email:${u.id}:${Date.now()}` });
+    await audit({ eventType: "settings.test_email_sent", actorId: u.id, actorRole: "admin", targetType: "email", targetId: res.provider, metadata: { to, provider: res.provider } });
+    return { ok: true, message: res.provider === "console" ? `Written to the development mailbox (/dev/mailbox) for ${to}. Set EMAIL_PROVIDER=smtp (Gmail) or resend to send real emails.` : `Sent to ${to} via ${res.provider}${res.messageId ? ` (id ${res.messageId})` : ""}. Check the inbox and the spam folder.` };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { ok: false, error: `Sending failed: ${msg}` };
+  }
+}
+
+export async function grantMembershipAction(_: unknown, fd: FormData): Promise<ActionResult> {
+  try {
+    const u = await assertPermission("settings.manage");
+    const { grantMembership } = await import("@/lib/services/membership");
+    const months = Number(fd.get("months"));
+    const m = await grantMembership(u, z.string().uuid().parse(fd.get("userId")), months, (fd.get("note") as string)?.trim() || null);
+    return { ok: true, message: m.expiresAt ? `Membership granted until ${m.expiresAt.toISOString().slice(0, 10)}.` : "Lifetime membership granted." };
+  } catch (e) {
+    return toActionError(e);
+  }
+}
+
+export async function revokeMembershipAction(_: unknown, fd: FormData): Promise<ActionResult> {
+  try {
+    const u = await assertPermission("settings.manage");
+    const note = (fd.get("note") as string)?.trim();
+    if (!note) return { ok: false, error: "Add a short reason.", fieldErrors: { note: "Add a short reason" } };
+    const { revokeMemberships } = await import("@/lib/services/membership");
+    await revokeMemberships(u, z.string().uuid().parse(fd.get("userId")), note);
+    return { ok: true, message: "Membership revoked. The member loses access immediately." };
+  } catch (e) {
+    return toActionError(e);
+  }
+}
+
+/** Re-checks a pending payment with Flutterwave (e.g. the member closed the browser before returning). */
+export async function recheckPaymentAction(_: unknown, fd: FormData): Promise<ActionResult> {
+  try {
+    await assertPermission("settings.manage");
+    const txRef = String(fd.get("txRef") ?? "");
+    const transactionId = String(fd.get("transactionId") ?? "").trim();
+    if (!/^\d{1,20}$/.test(transactionId)) return { ok: false, error: "Enter the numeric Flutterwave transaction ID (from the Flutterwave dashboard).", fieldErrors: { transactionId: "Numeric ID required" } };
+    const { confirmPayment } = await import("@/lib/services/membership");
+    const r = await confirmPayment(txRef, transactionId, "admin");
+    return r.outcome === "activated" || r.outcome === "already_active" ? { ok: true, message: "Payment confirmed and membership active." } : { ok: false, error: "message" in r ? r.message : "Not confirmed." };
+  } catch (e) {
+    return toActionError(e);
+  }
+}
+
+/** Runs one real critique on a short built-in sample essay to check the AI key and model (costs a few cents). */
+export async function testAiAction(): Promise<ActionResult> {
+  try {
+    const u = await assertPermission("settings.manage");
+    await rateLimit(`test-ai:${u.id}`, 3, 600);
+    const { generateCritique, DEFAULT_RUBRIC } = await import("@/lib/integrations/ai");
+    const body =
+      "When my father lost his job in SS2, I started selling recharge cards after school to pay my younger brother's fees. " +
+      "I studied at night with a rechargeable lamp and still finished WASSCE with seven credits. " +
+      "I also started a Saturday reading club for six children on my street; four of them now read on their own. " +
+      "I want to study software engineering so I can build tools that help small traders in my community keep records and grow.";
+    const started = Date.now();
+    const out = await generateCritique({ scholarshipName: "Sample scholarship (test)", scholarshipValues: "Leadership, community impact, resilience.", rubric: DEFAULT_RUBRIC, essayPrompt: "Tell us about a challenge you overcame.", essayTitle: "Test essay", essayBody: body, wordCount: body.split(/\s+/).length, wordLimit: 300 });
+    await audit({ eventType: "settings.test_ai_run", actorId: u.id, actorRole: "admin", targetType: "ai", targetId: out.model, metadata: { inputTokens: out.inputTokens, outputTokens: out.outputTokens } });
+    return { ok: true, message: `AI critique works (${out.provider}, ${out.model}, ${((Date.now() - started) / 1000).toFixed(1)}s, ${out.inputTokens ?? "?"} in / ${out.outputTokens ?? "?"} out tokens). Summary: “${out.critique.overall_summary.slice(0, 220)}${out.critique.overall_summary.length > 220 ? "…" : ""}”` };
+  } catch (e) {
+    return { ok: false, error: `AI test failed: ${e instanceof Error ? e.message : String(e)}` };
   }
 }

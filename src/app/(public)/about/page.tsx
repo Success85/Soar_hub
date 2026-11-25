@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 export const metadata: Metadata = { title: "About", description: "SOAR Hub's mission: equitable access to transformative education for young Africans." };
 
 const VALUES = [
-  ["Access", "Opportunity shouldn't depend on who you know or what you can afford. Our tools are free for applicants."],
+  ["Access", "Opportunity shouldn't depend on who you know or what you can afford. We keep membership affordable."],
   ["Clarity", "Plain language, honest explanations, and no unsupported promises."],
   ["Empowerment", "We help you tell your own story in your own voice — we never write it for you."],
   ["Integrity", "Scholarship information comes only from official sources, verified by people, with dates you can check."],

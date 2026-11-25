@@ -42,3 +42,14 @@ export async function count(table: string, where = "true") {
 }
 
 export { db, eq };
+
+export function outboxText(to: string): string[] {
+  const f = `${process.cwd()}/.dev-storage-test/outbox.jsonl`;
+  if (!existsSync(f)) return [];
+  return readFileSync(f, "utf8")
+    .trim()
+    .split("\n")
+    .map((l) => JSON.parse(l) as { to: string; text: string })
+    .filter((m) => m.to === to)
+    .map((m) => m.text);
+}

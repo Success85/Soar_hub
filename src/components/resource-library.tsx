@@ -27,7 +27,7 @@ export async function ResourceLibrary({ searchParams: sp, basePath, includeAppli
         <ul className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {rows.map(({ r, category, tags: t }) => (
             <li key={r.id} className="relative flex flex-col rounded-[var(--radius-card)] border border-line bg-white p-5 shadow-[var(--shadow-card)]">
-              {r.featuredImageUrl?.startsWith("/downloads/") && (
+              {r.featuredImageUrl?.startsWith("/previews/") && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={r.featuredImageUrl} alt="" className="-mx-5 -mt-5 mb-4 h-40 w-[calc(100%+2.5rem)] rounded-t-[var(--radius-card)] border-b border-line bg-ivory object-cover object-top" />
               )}

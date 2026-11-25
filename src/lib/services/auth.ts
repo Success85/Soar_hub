@@ -10,6 +10,7 @@ import { idempotencyKey } from "@/lib/engine/notification-keys";
 import { AppError } from "@/lib/errors";
 import type { RequestMeta } from "@/lib/request";
 import { audit } from "./audit";
+import { assignMemberCode } from "./member-code";
 import { appUrl, dispatchNow, enqueueNotification } from "./notifications";
 import { rateLimit } from "./rate-limit";
 import { getSettings } from "./settings";
@@ -83,19 +84,44 @@ export async function sendVerificationEmail(userId: string): Promise<void> {
 }
 
 export async function verifyEmail(token: string, meta: RequestMeta): Promise<"verified" | "expired" | "invalid"> {
+  const r = await verifyEmailAndAssignCode(token, meta);
+  return r.status;
+}
+
+/** Verifies the email, gives the member their permanent member ID and sends the welcome email (once). */
+export async function verifyEmailAndAssignCode(token: string, meta: RequestMeta): Promise<{ status: "verified" | "expired" | "invalid"; memberCode?: string; firstName?: string }> {
   const [row] = await db
     .select()
     .from(authTokens)
     .where(and(eq(authTokens.tokenHash, hashToken(token)), eq(authTokens.type, "email_verification")))
     .limit(1);
-  if (!row || row.usedAt) return "invalid";
-  if (row.expiresAt.getTime() < Date.now()) return "expired";
-  await db.transaction(async (tx) => {
+  if (!row || row.usedAt) return { status: "invalid" };
+  if (row.expiresAt.getTime() < Date.now()) return { status: "expired" };
+  const memberCode = await db.transaction(async (tx) => {
     await tx.update(authTokens).set({ usedAt: new Date() }).where(eq(authTokens.id, row.id));
     await tx.update(users).set({ emailVerifiedAt: new Date(), updatedAt: new Date() }).where(and(eq(users.id, row.userId), isNull(users.emailVerifiedAt)));
-    await audit({ eventType: "account.email_verified", actorId: row.userId, targetType: "user", targetId: row.userId, ...meta }, tx);
+    const code = await assignMemberCode(row.userId, tx);
+    await audit({ eventType: "account.email_verified", actorId: row.userId, targetType: "user", targetId: row.userId, metadata: { memberCode: code }, ...meta }, tx);
+    return code;
   });
-  return "verified";
+  const [u] = await db.select({ firstName: users.firstName }).from(users).where(eq(users.id, row.userId)).limit(1);
+  if (memberCode) {
+    try {
+      const id = await enqueueNotification({
+        templateKey: "auth.welcome",
+        channel: "email",
+        userId: row.userId,
+        transactional: true,
+        idempotencyKey: idempotencyKey(["auth.welcome", row.userId]),
+        vars: { firstName: u?.firstName ?? "", memberCode },
+        actionUrl: appUrl("/dashboard"),
+      });
+      await dispatchNow(id);
+    } catch {
+      // The welcome email is a courtesy; verification has already succeeded and the ID is shown on screen.
+    }
+  }
+  return { status: "verified", memberCode: memberCode ?? undefined, firstName: u?.firstName };
 }
 
 export const loginSchema = z.object({

@@ -7,7 +7,11 @@ import { redactProfile } from "@/lib/auth/permissions";
 import { requirePermissionPage } from "@/lib/auth/session";
 import { EDUCATION_LEVELS, optionLabel } from "@/lib/engine/fields";
 import { dayInTimezone, effectiveStatus } from "@/lib/engine/scheduler";
+import { grantMembershipAction, revokeMembershipAction } from "@/app/actions/admin";
+import { ActionForm, FieldError, SubmitButton } from "@/components/forms/action-form";
+import { Input, Label } from "@/components/ui/form";
 import { applicantDetail } from "@/lib/services/admin";
+import { membershipState, membershipsForUser } from "@/lib/services/membership";
 import { audit } from "@/lib/services/audit";
 import { profileCompletion } from "@/lib/services/profile";
 import { formatDate, formatDateTime } from "@/lib/utils";
@@ -20,6 +24,8 @@ export default async function ApplicantDetail({ params }: { params: Promise<{ id
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
   const d = await applicantDetail(id).catch(() => null);
+  const [ms, mHistory] = await Promise.all([membershipState(id), membershipsForUser(id)]);
+  const canManageMembership = user.permissions.has("settings.manage");
   if (!d) notFound();
   const canSensitive = user.permissions.has("applicants.view_sensitive");
   await audit({ eventType: "applicant.viewed", actorId: user.id, actorRole: "admin", targetType: "user", targetId: id, metadata: { sensitive: canSensitive } });
@@ -29,9 +35,36 @@ export default async function ApplicantDetail({ params }: { params: Promise<{ id
   const row = (k: string, v: unknown) => <div className="grid grid-cols-[150px_1fr] gap-2 py-1.5 text-sm"><dt className="text-muted">{k}</dt><dd className="font-medium">{v === null || v === undefined || v === "" ? "—" : String(v)}</dd></div>;
   return (
     <>
-      <PageHeader back={{ href: "/admin/applicants", label: "Applicants" }} title={`${d.user.firstName} ${d.user.lastName}`} description={`${d.user.email} · registered ${formatDate(d.user.createdAt)} · last login ${formatDateTime(d.user.lastLoginAt)}`} actions={<>{d.user.emailVerifiedAt ? <Badge tone="success">Verified</Badge> : <Badge tone="warning">Unverified</Badge>}<Badge>{d.user.status}</Badge>{d.user.isDemo && <Badge>Demo</Badge>}</>} />
+      <PageHeader back={{ href: "/admin/applicants", label: "Applicants" }} title={`${d.user.firstName} ${d.user.lastName}`} description={`${d.user.memberCode ? `${d.user.memberCode} · ` : ""}${d.user.email} · registered ${formatDate(d.user.createdAt)} · last login ${formatDateTime(d.user.lastLoginAt)}`} actions={<>{d.user.emailVerifiedAt ? <Badge tone="success">Verified</Badge> : <Badge tone="warning">Unverified</Badge>}<Badge>{d.user.status}</Badge>{d.user.isDemo && <Badge>Demo</Badge>}</>} />
       <div className="grid gap-6 lg:grid-cols-[1fr_1.3fr]">
         <div className="space-y-6">
+          <Card>
+            <CardHeader><CardTitle>Membership</CardTitle>{ms.active ? <Badge tone="success">{ms.lifetime ? "Lifetime" : `Active until ${formatDate(ms.expiresAt)}`}</Badge> : <Badge tone="warning">Not a member</Badge>}</CardHeader>
+            <CardBody className="space-y-4 text-sm">
+              {mHistory.length > 0 && (
+                <ul className="space-y-1 text-xs text-muted">
+                  {mHistory.slice(0, 5).map((m) => <li key={m.id}>{m.source === "flutterwave" ? "Paid" : m.source === "admin_grant" ? "Granted" : m.source} · {formatDate(m.startsAt)} → {m.expiresAt ? formatDate(m.expiresAt) : "lifetime"}{m.revokedAt ? " · revoked" : ""}{m.note ? ` · ${m.note}` : ""}</li>)}
+                </ul>
+              )}
+              {canManageMembership && (
+                <>
+                  <ActionForm action={grantMembershipAction} className="flex flex-wrap items-end gap-2">
+                    <input type="hidden" name="userId" value={id} />
+                    <div className="space-y-1"><Label htmlFor="months">Grant (months, 0 = lifetime)</Label><Input id="months" name="months" type="number" min={0} max={120} defaultValue={12} className="w-28" /></div>
+                    <div className="min-w-40 flex-1 space-y-1"><Label htmlFor="gnote">Reason</Label><Input id="gnote" name="note" placeholder="e.g. sponsored student, cash payment" /></div>
+                    <SubmitButton size="sm">Grant membership</SubmitButton>
+                  </ActionForm>
+                  {ms.active && (
+                    <ActionForm action={revokeMembershipAction} className="flex flex-wrap items-end gap-2">
+                      <input type="hidden" name="userId" value={id} />
+                      <div className="min-w-40 flex-1 space-y-1"><Label htmlFor="rnote">Revoke: reason</Label><Input id="rnote" name="note" placeholder="e.g. refunded" /><FieldError name="note" /></div>
+                      <SubmitButton size="sm" variant="danger">Revoke</SubmitButton>
+                    </ActionForm>
+                  )}
+                </>
+              )}
+            </CardBody>
+          </Card>
           <Card>
             <CardHeader><CardTitle>Profile · {completion.percent}% complete</CardTitle>{!canSensitive && <Badge tone="info">Sensitive fields restricted</Badge>}</CardHeader>
             <CardBody>

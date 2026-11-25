@@ -18,7 +18,7 @@ import {
   users,
 } from "@/lib/db/schema";
 import { AppError } from "@/lib/errors";
-import { count, ELIGIBLE_PROFILE, makeUser, outboxLinks, pdf } from "./helpers";
+import { count, ELIGIBLE_PROFILE, makeUser, outboxLinks, pdf, outboxText } from "./helpers";
 
 // AI provider is mocked so the full human-approval pipeline can be tested without credentials.
 vi.mock("@/lib/integrations/ai", async (orig) => {
@@ -108,6 +108,16 @@ describe("authentication", () => {
     expect(await AU.verifyEmail(token, { ip: null, userAgent: null })).toBe("invalid"); // single use
     const [u] = await db.select().from(users).where(eq(users.id, userId));
     expect(u.emailVerifiedAt).not.toBeNull();
+    // a permanent member ID is assigned on verification and sent in the welcome email
+    expect(u.memberCode).toMatch(/^SOAR-\d{2}-[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{6}$/);
+    const welcome = outboxText(email).find((t) => t.includes("Your member ID:"));
+    expect(welcome).toContain(u.memberCode!);
+    const [w] = await db.select().from(notifications).where(and(eq(notifications.userId, userId), eq(notifications.templateKey, "auth.welcome")));
+    expect(w.status).toBe("sent");
+    // admins can find the member by ID, typed loosely
+    const { listApplicants } = await import("@/lib/services/admin");
+    const found = await listApplicants({ q: u.memberCode!.toLowerCase().replace(/-/g, " ") });
+    expect(found.rows.map((r) => r.id)).toContain(userId);
     // secret link was scrubbed from the notification record after sending
     const [n] = await db.select().from(notifications).where(and(eq(notifications.userId, userId), eq(notifications.templateKey, "auth.verify_email")));
     expect(n.status).toBe("sent");

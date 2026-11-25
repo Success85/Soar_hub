@@ -30,7 +30,9 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
-  serverExternalPackages: ["mammoth", "unpdf"],
+  serverExternalPackages: ["mammoth", "unpdf", "nodemailer"],
+  // Member-only sample documents are read from disk by the /downloads/[file] route.
+  outputFileTracingIncludes: { "/downloads/[file]": ["./content/downloads/**"] },
   experimental: {
     serverActions: { bodySizeLimit: "12mb" },
   },

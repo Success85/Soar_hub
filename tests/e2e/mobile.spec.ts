@@ -9,7 +9,7 @@ const noOverflow = async (page: import("@playwright/test").Page) => {
 };
 
 test("public pages fit 320px without horizontal scrolling and the menu works", async ({ page }) => {
-  for (const path of ["/", "/scholarships", "/about", "/resources", "/resources/alu-cv-template-explained", "/guide", "/faq", "/contact", "/login", "/register"]) {
+  for (const path of ["/", "/membership", "/about", "/faq", "/contact", "/login", "/register"]) {
     await page.goto(path);
     await noOverflow(page);
   }
@@ -20,7 +20,7 @@ test("public pages fit 320px without horizontal scrolling and the menu works", a
 
 test("applicant portal works at 320px", async ({ page }) => {
   await login(page, "applicant@demo.soarhub.ng");
-  for (const path of ["/dashboard", "/applications", "/planner", "/documents", "/essays", "/referees", "/settings"]) {
+  for (const path of ["/scholarships", "/guide", "/resources/alu-cv-template-explained", "/dashboard", "/applications", "/planner", "/documents", "/essays", "/referees", "/settings"]) {
     await page.goto(path);
     await noOverflow(page);
   }

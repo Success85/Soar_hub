@@ -16,7 +16,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ kind: st
   let csv = "";
   if (kind === "applicants") {
     const { rows } = await listApplicants({ ...sp, page: 1, completion: sp.completion as never }, { limit: 10000 });
-    let out: Record<string, unknown>[] = rows.map((r) => ({ id: r.id, first_name: r.first_name, last_name: r.last_name, email: r.email, registered: r.created_at, verified: !!r.email_verified_at, profile_completion: r.completion, applications: r.applications, submitted: r.submitted, latest_status: r.latest_status, state_of_origin: r.state_of_origin, education_level: r.education_level }));
+    let out: Record<string, unknown>[] = rows.map((r) => ({ id: r.id, member_id: r.member_code, first_name: r.first_name, last_name: r.last_name, email: r.email, registered: r.created_at, verified: !!r.email_verified_at, profile_completion: r.completion, applications: r.applications, submitted: r.submitted, latest_status: r.latest_status, state_of_origin: r.state_of_origin, education_level: r.education_level }));
     if (sensitive && rows.length) {
       const extra = await db.execute<{ user_id: string; date_of_birth: string; gender: string; household_income_band: string; has_disability: boolean; is_refugee_or_displaced: boolean; phone: string }>(sql`SELECT user_id, date_of_birth, gender, household_income_band, has_disability, is_refugee_or_displaced, phone FROM profiles WHERE user_id IN ${rows.map((r) => r.id)}`);
       const map = new Map([...extra].map((e) => [e.user_id, e]));

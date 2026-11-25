@@ -28,6 +28,7 @@ const GROUPS: { label?: string; items: Item[] }[] = [
     items: [
       { href: "/admin/notifications", label: "Notifications", icon: "mail", perm: "notifications.manage" },
       { href: "/admin/content", label: "Content & resources", icon: "content", perm: "content.manage" },
+      { href: "/admin/payments", label: "Payments & members", icon: "payments", perm: "settings.manage" },
       { href: "/admin/analytics", label: "Analytics & reports", icon: "analytics", perm: "analytics.view" },
       { href: "/admin/users", label: "Users & roles", icon: "roles", perm: "users.manage" },
       { href: "/admin/data-requests", label: "Privacy requests", icon: "list", perm: "data_requests.manage" },

@@ -23,7 +23,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
     <>
       <PageHeader title="Users & roles" description="Grant reviewer or administrator access. Role changes are audited; only super administrators can grant super administrator." actions={me.roles.includes("super_admin") && <Button asChild variant="secondary"><Link href="/admin/users/roles">Role permissions</Link></Button>} />
       <form method="get" className="mb-4 flex flex-wrap gap-2">
-        <Input name="q" defaultValue={sp.q} placeholder="Name or email" aria-label="Search" className="w-64" />
+        <Input name="q" defaultValue={sp.q} placeholder="Name, email or member ID" aria-label="Search" className="w-64" />
         <Select name="role" defaultValue={sp.role ?? ""} aria-label="Role" className="w-48"><option value="">Any role</option>{ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}</Select>
         <Button type="submit" variant="secondary">Filter</Button>
       </form>
@@ -31,7 +31,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
         <thead><tr><Th>User</Th><Th>Joined</Th><Th>Status</Th><Th>Roles</Th><Th>Actions</Th></tr></thead>
         <tbody>{res.rows.map(({ u, roles }) => (
           <tr key={u.id}>
-            <Td><p className="font-semibold">{u.firstName} {u.lastName}</p><p className="text-xs text-muted">{u.email}</p></Td>
+            <Td><p className="font-semibold">{u.firstName} {u.lastName}</p><p className="text-xs text-muted">{u.email}</p>{u.memberCode && <p className="font-mono text-xs text-muted">{u.memberCode}</p>}</Td>
             <Td className="whitespace-nowrap">{formatDate(u.createdAt)}</Td>
             <Td><Badge tone={u.status === "active" ? "success" : "danger"}>{u.status}</Badge></Td>
             <Td><div className="flex flex-wrap gap-1">{roles.map((r) => <Badge key={r} tone="info">{ROLE_LABELS[r as Role]}</Badge>)}</div></Td>

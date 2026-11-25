@@ -22,6 +22,7 @@
     "db:import-scholarships": "tsx --require ./scripts/stub-server-only.cjs scripts/import-scholarships.ts",
     "db:import-resources": "tsx --require ./scripts/stub-server-only.cjs scripts/import-resources.ts",
     "demo:setup": "npm run db:migrate && npm run db:seed && npm run db:import-scholarships && npm run db:import-resources && npm run db:seed:demo",
+    "users:delete": "tsx --require ./scripts/stub-server-only.cjs scripts/delete-users.ts",
     "logos:fetch": "tsx --require ./scripts/stub-server-only.cjs scripts/fetch-logos.ts"
   },
   "dependencies": {
@@ -40,6 +41,7 @@
     "lucide-react": "^1.78.0",
     "mammoth": "^1.13.0",
     "next": "^15.5.29",
+    "nodemailer": "^6.10.1",
     "postgres": "^4.1.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
@@ -57,6 +59,7 @@
     "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4.3.5",
     "@types/node": "^26.6.6",
+    "@types/nodemailer": "^6.4.24",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "dotenv": "^18.0.10",

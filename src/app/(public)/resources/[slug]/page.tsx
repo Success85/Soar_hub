@@ -5,7 +5,7 @@ import { Download, ExternalLink, FileText, Lock } from "lucide-react";
 import { Markdown } from "@/components/markdown";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/misc";
-import { getCurrentUser } from "@/lib/auth/session";
+import { getCurrentUser, requireMemberPage } from "@/lib/auth/session";
 import { CONTENT_TYPES, getResource } from "@/lib/services/content";
 import { formatDate } from "@/lib/utils";
 
@@ -23,7 +23,7 @@ function embedUrl(url: string): string | null {
   return null;
 }
 
-/** Files hosted by SOAR Hub itself (public/downloads) get a download card instead of an external link. */
+/** Files hosted by SOAR Hub itself (content/downloads, served to members by /downloads/[file]) get a download card. */
 function localFile(url: string | null) {
   if (!url?.startsWith("/downloads/")) return null;
   const ext = url.split(".").pop()?.toUpperCase() ?? "FILE";
@@ -31,6 +31,7 @@ function localFile(url: string | null) {
 }
 
 export default async function ResourcePage({ params }: { params: Promise<{ slug: string }> }) {
+  await requireMemberPage(`/resources/${(await params).slug}`);
   const [r, user] = await Promise.all([getResource({ slug: (await params).slug }), getCurrentUser()]);
   const isEditor = !!user?.permissions.has("content.manage");
   if (!r || ((r.r.status !== "published" || (r.r.publishedAt && r.r.publishedAt > new Date())) && !isEditor)) notFound();
@@ -52,8 +53,8 @@ export default async function ResourcePage({ params }: { params: Promise<{ slug:
         <div className="mt-10 rounded-2xl border border-line bg-white p-8 text-center">
           <Lock className="mx-auto size-8 text-gold-600" aria-hidden />
           <p className="mt-3 font-semibold">This resource is for SOAR Hub members</p>
-          <p className="mt-1 text-sm text-muted">Create a free account to read it.</p>
-          <div className="mt-5 flex justify-center gap-2"><Button asChild><Link href="/register">Create free account</Link></Button><Button asChild variant="secondary"><Link href={`/login?next=/resources/${r.r.slug}`}>Sign in</Link></Button></div>
+          <p className="mt-1 text-sm text-muted">Become a member to read it.</p>
+          <div className="mt-5 flex justify-center gap-2"><Button asChild><Link href="/membership">Become a member</Link></Button><Button asChild variant="secondary"><Link href={`/login?next=/resources/${r.r.slug}`}>Sign in</Link></Button></div>
         </div>
       ) : (
         <div className="mt-10 space-y-6">

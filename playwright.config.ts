@@ -15,11 +15,20 @@ export default defineConfig({
     { name: "desktop", use: { ...devices["Desktop Chrome"] }, testIgnore: /mobile\.spec/ },
     { name: "mobile", use: { ...devices["Pixel 7"] }, testMatch: /mobile\.spec/ },
   ],
-  webServer: {
-    command: `npx next dev -p ${port}`,
-    url: `http://localhost:${port}/api/health`,
-    reuseExistingServer: true,
-    timeout: 180_000,
-    env: { DISABLE_RATE_LIMIT: "true", APP_URL: `http://localhost:${port}` },
-  },
+  webServer: [
+    {
+      command: "node tests/e2e/mock-flutterwave.mjs",
+      url: "http://127.0.0.1:4010/health",
+      reuseExistingServer: true,
+      timeout: 30_000,
+    },
+    {
+      command: `npx next dev -p ${port}`,
+      url: `http://localhost:${port}/api/health`,
+      reuseExistingServer: true,
+      timeout: 180_000,
+      // Payments go to the local mock Flutterwave above, never to the real API.
+      env: { DISABLE_RATE_LIMIT: "true", APP_URL: `http://localhost:${port}`, FLW_SECRET_KEY: "FLWSECK_TEST-e2e", FLW_SECRET_HASH: "e2e-webhook-hash", FLW_API_BASE: "http://127.0.0.1:4010/v3" },
+    },
+  ],
 });

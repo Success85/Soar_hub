@@ -12,6 +12,7 @@ const NAV = [
   { href: "/scholarships", label: "Scholarships" },
   { href: "/guide", label: "How to apply" },
   { href: "/resources", label: "Learning resources" },
+  { href: "/membership", label: "Membership" },
   { href: "/faq", label: "FAQ" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
@@ -25,14 +26,14 @@ export function PublicHeader({ signedIn, homeHref }: { signedIn: boolean; homeHr
     <header className="sticky top-0 z-40 border-b border-line/80 bg-ivory/90 backdrop-blur supports-[backdrop-filter]:bg-ivory/75">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         <Logo />
-        <nav aria-label="Main" className="hidden items-center gap-1 lg:flex">
+        <nav aria-label="Main" className="hidden items-center gap-1 xl:flex">
           {NAV.map((n) => (
             <Link key={n.href} href={n.href} aria-current={pathname.startsWith(n.href) ? "page" : undefined} className={cn("whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-navy-800 hover:bg-ivory-200", pathname.startsWith(n.href) && "text-navy-950 underline decoration-gold-500 decoration-2 underline-offset-8")}>
               {n.label}
             </Link>
           ))}
         </nav>
-        <div className="hidden items-center gap-2 lg:flex">
+        <div className="hidden items-center gap-2 xl:flex">
           {signedIn ? (
             <Button asChild>
               <Link href={homeHref}>Go to dashboard</Link>
@@ -48,13 +49,13 @@ export function PublicHeader({ signedIn, homeHref }: { signedIn: boolean; homeHr
             </>
           )}
         </div>
-        <button type="button" className="inline-flex size-11 items-center justify-center rounded-lg text-navy-900 hover:bg-ivory-200 lg:hidden" aria-expanded={open} aria-controls="mobile-nav" onClick={() => setOpen((o) => !o)}>
+        <button type="button" className="inline-flex size-11 items-center justify-center rounded-lg text-navy-900 hover:bg-ivory-200 xl:hidden" aria-expanded={open} aria-controls="mobile-nav" onClick={() => setOpen((o) => !o)}>
           {open ? <X aria-hidden /> : <Menu aria-hidden />}
           <span className="sr-only">{open ? "Close menu" : "Open menu"}</span>
         </button>
       </div>
       {open && (
-        <nav id="mobile-nav" aria-label="Mobile" className="border-t border-line bg-ivory px-4 pb-5 pt-2 lg:hidden">
+        <nav id="mobile-nav" aria-label="Mobile" className="border-t border-line bg-ivory px-4 pb-5 pt-2 xl:hidden">
           <ul className="space-y-1">
             {NAV.map((n) => (
               <li key={n.href}>
@@ -72,7 +73,7 @@ export function PublicHeader({ signedIn, homeHref }: { signedIn: boolean; homeHr
             ) : (
               <>
                 <Button asChild>
-                  <Link href="/register">Get started — it&apos;s free</Link>
+                  <Link href="/register">Get started</Link>
                 </Button>
                 <Button asChild variant="secondary">
                   <Link href="/login">Sign in</Link>

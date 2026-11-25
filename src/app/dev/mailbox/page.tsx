@@ -27,12 +27,12 @@ function Body({ text }: { text: string }) {
 }
 
 /**
- * Development only: shows the emails the "console" email provider has written to the local outbox,
+ * Development only: shows the emails written to the local outbox (all emails in development, whatever the provider),
  * so you can click verification and referee links without a real email service.
  * It also sends any queued notifications first, so you don't need the background worker running.
  */
 export default async function DevMailboxPage({ searchParams }: { searchParams: Promise<{ to?: string }> }) {
-  if (isProd || env.EMAIL_PROVIDER !== "console") notFound();
+  if (isProd) notFound();
   const { to } = await searchParams;
   await dispatchDue(100);
   let mails: Mail[] = [];
@@ -48,7 +48,12 @@ export default async function DevMailboxPage({ searchParams }: { searchParams: P
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-gold-700">Development only</p>
       <h1 className="mt-2 font-display text-3xl">Mailbox</h1>
-      <p className="mt-2 text-muted">Emails SOAR Hub would have sent. Nothing here leaves your computer. This page does not exist in production.</p>
+      <p className="mt-2 text-muted">
+        {env.EMAIL_PROVIDER === "console"
+          ? "Emails SOAR Hub would have sent. Nothing here leaves your computer."
+          : `A local copy of every email sent through ${env.EMAIL_PROVIDER}, so links work even if the provider refused a recipient.`}{" "}
+        This page does not exist in production.
+      </p>
       <div className="mt-5 flex flex-wrap items-center gap-2 text-sm">
         <Link href="/dev/mailbox" className={`rounded-full border px-3 py-1 ${!to ? "border-navy-900 bg-navy-900 text-ivory" : "border-line bg-white"}`}>All ({mails.length})</Link>
         {recipients.slice(0, 12).map((r) => (

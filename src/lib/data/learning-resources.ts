@@ -1,7 +1,7 @@
 /**
  * SOAR Hub's own learning resources: sample documents with a written explanation of each.
  * Loaded with `npm run db:import-resources` (idempotent, keyed by slug).
- * Files live in /public/downloads; previews in /public/downloads/previews.
+ * Files live in content/downloads (members only, served by /downloads/[file]); previews in public/previews.
  */
 export interface SeedResource {
   slug: string;
@@ -21,7 +21,7 @@ export const LEARNING_RESOURCES: SeedResource[] = [
     type: "essay_guide",
     category: "essay-writing",
     description: "Download a real scholarship SOP sample, see what works and what to avoid, and learn a structure for writing your own.",
-    file: { url: "/downloads/statement-of-purpose-sample.pdf", preview: "/downloads/previews/statement-of-purpose-sample.png", label: "Scholarship SOP sample", format: "PDF", pages: 3 },
+    file: { url: "/downloads/statement-of-purpose-sample.pdf", preview: "/previews/statement-of-purpose-sample.png", label: "Scholarship SOP sample", format: "PDF", pages: 3 },
     tags: ["SOP", "master's", "essays", "samples"],
     body: `## What is a statement of purpose?
 
@@ -75,7 +75,7 @@ Draft yours in the **Essays** workspace in your SOAR Hub portal, and see the [co
     type: "cv_guide",
     category: "cv-documents",
     description: "A one-page CV template with a filled-in example. Learn what goes in each section and how to write strong bullet points, even with little work experience.",
-    file: { url: "/downloads/alu-cv-template.pdf", preview: "/downloads/previews/alu-cv-template.png", label: "ALU CV template with example", format: "PDF", pages: 2 },
+    file: { url: "/downloads/alu-cv-template.pdf", preview: "/previews/alu-cv-template.png", label: "ALU CV template with example", format: "PDF", pages: 2 },
     tags: ["CV", "master's", "templates"],
     body: `## What is in the download?
 
@@ -137,7 +137,7 @@ Upload your finished CV to the **Documents** workspace so it is ready for every 
     type: "download",
     category: "reference-letters",
     description: "See the parts of a scholarship recommendation letter, what makes one strong, and how to brief the teacher or mentor who writes yours.",
-    file: { url: "/downloads/recommendation-letter-sample.png", preview: "/downloads/previews/recommendation-letter-sample.png", label: "Sample scholarship recommendation letter", format: "PNG image" },
+    file: { url: "/downloads/recommendation-letter-sample.png", preview: "/previews/recommendation-letter-sample.png", label: "Sample scholarship recommendation letter", format: "PNG image" },
     tags: ["recommendation letters", "referees", "samples"],
     body: `## What is a recommendation letter?
 

@@ -65,10 +65,10 @@ Failed messages (after automatic retries at 5, 15, 60 minutes) can be **retried*
 ## Learning resources, application guide and FAQ
 
 - **Sample documents** (SOP sample, ALU CV template, recommendation letter sample) are loaded with
-  `npm run db:import-resources`. The files live in `public/downloads/` (previews in `public/downloads/previews/`), and the
+  `npm run db:import-resources`. The files live in `content/downloads/` (served to members only; previews in `public/previews/`), and the
   explanation for each is in `src/lib/data/learning-resources.ts`. They appear in **Admin → Content** like any other resource and
   can be edited there; re-running the import overwrites those edits with the dataset. To add another file, put it in
-  `public/downloads/` and set the resource's external link to `/downloads/<file>`: the resource page then shows a download card.
+  `content/downloads/` and set the resource's external link to `/downloads/<file>`: the resource page then shows a download card.
 - **The application guide** (`/guide`) is the written version of the "Scholarship Access Code" webinar. The slides themselves are
   not published. Edit it in `src/app/(public)/guide/page.tsx`.
 - **The FAQ** (`/faq`) is in `src/lib/data/faq.ts`. Items marked `home: true` also appear on the home page.
