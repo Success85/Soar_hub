@@ -12,6 +12,7 @@ export const sqlClient =
   postgres(env.DATABASE_URL, {
     max: env.DATABASE_POOL_MAX,
     idle_timeout: 20,
+    connect_timeout: 10, // fail fast instead of hanging if the database can't be reached
     prepare: false, // compatible with Supabase transaction pooler (pgbouncer)
     onnotice: () => {},
   });

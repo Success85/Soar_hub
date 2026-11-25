@@ -13,6 +13,10 @@ export const metadata: Metadata = {
   openGraph: { siteName: "SOAR Hub", type: "website" },
 };
 
+// Every page is rendered per request: pages read settings and the signed-in user from the database, and must
+// never be pre-rendered at build time (the database may be slow or unreachable from the build machine).
+export const dynamic = "force-dynamic";
+
 export const viewport: Viewport = { themeColor: "#0B1F3A", width: "device-width", initialScale: 1 };
 
 const hex = (v: unknown, fallback: string) => (typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v) ? v : fallback);
