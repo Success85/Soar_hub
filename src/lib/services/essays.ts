@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { CurrentUser } from "@/lib/auth/session";
 import { can } from "@/lib/auth/permissions";
@@ -279,7 +279,7 @@ export async function requestAiCritique(user: CurrentUser, essayId: string) {
 export async function processCritiqueRequest(requestId: string): Promise<"completed" | "failed" | "skipped"> {
   const claimed = await db
     .update(aiCritiqueRequests)
-    .set({ status: "generating", attempts: sql`${aiCritiqueRequests.attempts} + 1` })
+    .set({ status: "generating", startedAt: new Date(), attempts: sql`${aiCritiqueRequests.attempts} + 1` })
     .where(and(eq(aiCritiqueRequests.id, requestId), eq(aiCritiqueRequests.status, "queued")))
     .returning();
   const req = claimed[0];
@@ -322,6 +322,10 @@ export async function processCritiqueRequest(requestId: string): Promise<"comple
 }
 
 export async function processCritiqueQueue(limit = 5) {
+  // A request still "generating" after 5 minutes was cut off (e.g. a serverless time limit): retry it, at most 3 attempts.
+  const stale = new Date(Date.now() - 5 * 60_000);
+  await db.update(aiCritiqueRequests).set({ status: "queued" }).where(and(eq(aiCritiqueRequests.status, "generating"), lt(aiCritiqueRequests.startedAt, stale), lt(aiCritiqueRequests.attempts, 3)));
+  await db.update(aiCritiqueRequests).set({ status: "failed", error: "Generation was interrupted 3 times." }).where(and(eq(aiCritiqueRequests.status, "generating"), lt(aiCritiqueRequests.startedAt, stale), gte(aiCritiqueRequests.attempts, 3)));
   const queued = await db.select({ id: aiCritiqueRequests.id }).from(aiCritiqueRequests).where(eq(aiCritiqueRequests.status, "queued")).orderBy(asc(aiCritiqueRequests.createdAt)).limit(limit);
   const out = { completed: 0, failed: 0, skipped: 0 };
   for (const q of queued) out[await processCritiqueRequest(q.id)]++;

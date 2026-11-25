@@ -852,6 +852,8 @@ export const aiCritiqueRequests = pgTable(
     error: text("error"),
     attempts: integer("attempts").notNull().default(0),
     createdAt: createdAt(),
+    /** When generation last started; used to retry requests whose server process was cut off. */
+    startedAt: ts("started_at"),
     completedAt: ts("completed_at"),
   },
   (t) => [index("ai_requests_status_idx").on(t.status), index("ai_requests_essay_idx").on(t.essayId)],

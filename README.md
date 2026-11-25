@@ -56,7 +56,7 @@ Demo accounts (local only, password `Soar-demo-2026!` or `$DEMO_PASSWORD`):
 `applicant@demo.soarhub.ng`, `reviewer@demo.soarhub.ng`, `admin@demo.soarhub.ng`, `superadmin@demo.soarhub.ng`.
 In development, emails are not sent: open <http://localhost:3000/dev/mailbox> to read them and click verification, reset and referee links.
 To deliver real emails (and the welcome email with each member's ID), follow [`docs/EMAIL_SETUP.md`](docs/EMAIL_SETUP.md).
-Membership payments (Flutterwave): [`docs/PAYMENTS_SETUP.md`](docs/PAYMENTS_SETUP.md). Malware scanning, semantic search and live file storage: [`docs/INTEGRATIONS_SETUP.md`](docs/INTEGRATIONS_SETUP.md). AI essay critique (Claude): [`docs/AI_SETUP.md`](docs/AI_SETUP.md).
+Free hosting (Vercel + Supabase + cron-job.org): [`docs/FREE_HOSTING.md`](docs/FREE_HOSTING.md). Membership payments (Flutterwave): [`docs/PAYMENTS_SETUP.md`](docs/PAYMENTS_SETUP.md). Malware scanning, semantic search and live file storage: [`docs/INTEGRATIONS_SETUP.md`](docs/INTEGRATIONS_SETUP.md). AI essay critique (Claude): [`docs/AI_SETUP.md`](docs/AI_SETUP.md).
 The demo applicant accounts are members already; new sign-ups must pay (use Flutterwave test mode locally).
 
 ## Scripts

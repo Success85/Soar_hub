@@ -1,0 +1,1 @@
+ALTER TABLE "ai_critique_requests" ADD COLUMN "started_at" timestamp with time zone;
