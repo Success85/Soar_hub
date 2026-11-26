@@ -1,7 +1,7 @@
 # Putting SOAR Hub online for free
 
 Everything below uses free plans. You don't need a domain or a payment card: the site gets a free address like
-`https://soar-hub2.vercel.app`.
+`https://<your-project>.vercel.app`.
 
 | Part | Free service | What it does |
 |---|---|---|
@@ -64,16 +64,16 @@ Run it twice. **SAVE** the first as *SESSION_SECRET* and the second as *CRON_SEC
 
 ## Step 4: Vercel (the website)
 
-1. Go to **vercel.com** → **Sign up** → **Hobby** → continue with GitHub, and allow Vercel to see the
-   `DropTraQ/soar-hub2` repository.
-2. **Add New… → Project** → import **soar-hub2**. Framework: **Next.js** (detected). Root directory: leave as `./`.
+1. Go to **vercel.com** → **Sign up** → **Hobby** → continue with GitHub, and allow Vercel to see
+   **this repository** (the one this guide is in).
+2. **Add New… → Project** → import **this repository**. Framework: **Next.js** (detected). Root directory: leave as `./`.
 3. Open **Environment Variables** and add these (name on the left, your value on the right):
 
    | Name | Value |
    |---|---|
-   | `APP_URL` | `https://soar-hub2.vercel.app` (you'll correct it after the first deploy if Vercel gives a different address) |
+   | `APP_URL` | `https://<your-project>.vercel.app` (you'll correct it after the first deploy if Vercel gives a different address) |
    | `DATABASE_URL` | your *APP_URL_DB* (Transaction pooler, port 6543) |
-   | `DATABASE_POOL_MAX` | `1` |
+   | `DATABASE_POOL_MAX` | `3` |
    | `SESSION_SECRET` | your *SESSION_SECRET* |
    | `CRON_SECRET` | your *CRON_SECRET* |
    | `STORAGE_DRIVER` | `s3` |
@@ -91,8 +91,11 @@ Run it twice. **SAVE** the first as *SESSION_SECRET* and the second as *CRON_SEC
    | `FLW_SECRET_HASH` | your Flutterwave secret hash |
    | `AI_PROVIDER` / `AI_API_KEY` | optional: only if you have Anthropic API credit (each critique costs a few cents) |
 
-4. Click **Deploy** and wait for "Congratulations". Click the preview to open your site and note its address.
-5. If the address differs from what you put in `APP_URL`: **Settings → Environment Variables → APP_URL → Edit**,
+4. Server code runs in **Dublin** (`dub1` in `vercel.json`), next to a Supabase project in West EU (Ireland). If your
+   Supabase project is in another region, change it under **Settings → Functions → Function Region** to the closest
+   one; far apart, pages time out (504).
+5. Click **Deploy** and wait for "Congratulations". Click the preview to open your site and note its address.
+6. If the address differs from what you put in `APP_URL`: **Settings → Environment Variables → APP_URL → Edit**,
    save, then **Deployments → ⋯ (latest) → Redeploy**. Links in emails and the Flutterwave return page use `APP_URL`.
 
 ## Step 5: cron-job.org (scheduled jobs)

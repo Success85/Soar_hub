@@ -10,7 +10,7 @@
 
 ## Steps
 ```bash
-cd soar-hub
+# run from the root folder of this repository (the folder that contains package.json)
 npm install
 cp .env.example .env
 # create databases (skip if using Docker/Supabase as above)

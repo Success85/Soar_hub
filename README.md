@@ -346,11 +346,11 @@ docs/               detailed guides
 
 ## 8. Running it on your computer
 
-You need **Node.js 20+** and **PostgreSQL 16 with pgvector** (or Docker).
+You need **Node.js 20+** and **PostgreSQL 16 with pgvector** (or Docker). Clone or download **this repository**,
+open a terminal in its root folder, then run:
 
 ```bash
-git clone https://github.com/DropTraQ/soar-hub2.git
-cd soar-hub2
+# from the root folder of this repository (the folder that contains package.json)
 npm install
 cp .env.example .env
 ```
