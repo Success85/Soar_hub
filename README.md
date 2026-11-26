@@ -149,6 +149,17 @@ Admins can change the price and length in **Admin → Settings → Membership & 
 SOAR Hub can ask Claude (Anthropic) to write a **structured critique** of an applicant's essay. It is designed to
 coach, never to ghost-write.
 
+> **Note for graders: AI critique is not switched on in the deployed version.**
+> The live site runs entirely on free plans, and the Anthropic API has no free tier (every critique is a paid API
+> call). So no `AI_API_KEY` is set on <https://soar-hub.vercel.app>. There you will see:
+> - **Admin → Settings → Integrations** lists AI critique as *not configured*.
+> - Essays are reviewed by human reviewers only, and the AI approval queues are empty.
+> - Applicants see no AI feedback.
+>
+> The feature is fully built and tested in the code (`src/lib/integrations/ai.ts`, `src/lib/services/essays.ts`).
+> Adding an Anthropic API key turns it on with no code change ([steps below](#turning-it-on)). The rest of this
+> section describes how it works once a key is added.
+
 ### What it does, and what it never does
 
 | It does | It never does |
@@ -407,7 +418,7 @@ Every integration is optional and shows its status in **Admin → Settings → I
 | Email (Gmail SMTP) | Active | [docs/EMAIL_SETUP.md](docs/EMAIL_SETUP.md) |
 | Payments (Flutterwave) | Active (test mode) | [docs/PAYMENTS_SETUP.md](docs/PAYMENTS_SETUP.md) |
 | File storage (Supabase S3) | Active | [docs/FREE_HOSTING.md](docs/FREE_HOSTING.md) |
-| AI critique (Anthropic) | Ready; needs an API key | [docs/AI_SETUP.md](docs/AI_SETUP.md) |
+| AI critique (Anthropic) | **Not activated on the live site** (no free plan); built and ready, needs a paid API key | [docs/AI_SETUP.md](docs/AI_SETUP.md) |
 | Embeddings | Not configured (optional) | [docs/INTEGRATIONS_SETUP.md](docs/INTEGRATIONS_SETUP.md) |
 | Malware scanning (ClamAV) | Not configured (needs its own server) | [docs/INTEGRATIONS_SETUP.md](docs/INTEGRATIONS_SETUP.md) |
 | SMS | Off in this version | — |
@@ -499,6 +510,8 @@ See [docs/TESTING.md](docs/TESTING.md).
 - No virus scanning on the free setup: uploads are marked "not scanned".
 - Videos can't be uploaded directly; applicants upload a document containing a private link.
 - SMS is not part of this version.
+- AI essay critique is not switched on in the deployed version, because the Anthropic API has no free tier. The
+  code is complete; it switches on when an API key is added (see [section 5](#5-ai-essay-critique)).
 - Scholarship details come from official pages and change between rounds; admins must re-verify them each cycle.
 
 ## 17. Troubleshooting
