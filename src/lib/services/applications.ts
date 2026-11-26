@@ -1,6 +1,6 @@
 import "server-only";
 import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
-import { db } from "@/lib/db";
+import { db, type DbOrTx } from "@/lib/db";
 import {
   applicationMilestones,
   applications,
@@ -20,11 +20,11 @@ import { generateSchedule, recomputeProgress, SUBMIT_KEY } from "./planner";
 
 const READY_STATUSES = new Set(["uploaded", "pending_review", "under_review", "approved"]);
 
-export async function checklistFor(applicationId: string) {
-  const [app] = await db.select().from(applications).where(eq(applications.id, applicationId)).limit(1);
+export async function checklistFor(applicationId: string, q: DbOrTx = db) {
+  const [app] = await q.select().from(applications).where(eq(applications.id, applicationId)).limit(1);
   if (!app) throw new NotFoundError("Application");
-  const reqs = await db.select().from(scholarshipDocumentRequirements).where(eq(scholarshipDocumentRequirements.scholarshipId, app.scholarshipId)).orderBy(asc(scholarshipDocumentRequirements.sortOrder));
-  const docs = await db.select().from(documents).where(and(eq(documents.applicationId, applicationId), isNull(documents.deletedAt)));
+  const reqs = await q.select().from(scholarshipDocumentRequirements).where(eq(scholarshipDocumentRequirements.scholarshipId, app.scholarshipId)).orderBy(asc(scholarshipDocumentRequirements.sortOrder));
+  const docs = await q.select().from(documents).where(and(eq(documents.applicationId, applicationId), isNull(documents.deletedAt)));
   const docList = reqs.map((r) => {
     const matches = docs.filter((d) => d.requirementId === r.id || (!d.requirementId && d.category === r.category));
     const best = matches.find((d) => d.reviewStatus === "approved") ?? matches.find((d) => d.currentVersion > 0 && READY_STATUSES.has(d.reviewStatus)) ?? matches[0];
@@ -42,7 +42,7 @@ export async function checklistFor(applicationId: string) {
       problem: !best ? "Not uploaded yet" : !ready ? (best.reviewStatus === "needs_revision" ? "Needs revision" : best.reviewStatus === "rejected" ? "Rejected — upload a new version" : "Not uploaded yet") : null,
     };
   });
-  const ms = await db.select().from(applicationMilestones).where(eq(applicationMilestones.applicationId, applicationId));
+  const ms = await q.select().from(applicationMilestones).where(eq(applicationMilestones.applicationId, applicationId));
   const incompleteMilestones = ms.filter((m) => m.isRequired && m.status !== "completed" && m.templateKey !== SUBMIT_KEY).map((m) => m.name);
   return {
     documents: docList,
@@ -51,8 +51,8 @@ export async function checklistFor(applicationId: string) {
   };
 }
 
-async function currentVerdict(userId: string, scholarshipId: string) {
-  const [a] = await db
+async function currentVerdict(userId: string, scholarshipId: string, q: DbOrTx = db) {
+  const [a] = await q
     .select({ id: eligibilityAssessments.id, verdict: eligibilityAssessments.overallVerdict })
     .from(eligibilityAssessments)
     .where(and(eq(eligibilityAssessments.userId, userId), eq(eligibilityAssessments.scholarshipId, scholarshipId), eq(eligibilityAssessments.isCurrent, true)))
@@ -69,8 +69,9 @@ export async function transitionApplication(
   return db.transaction(async (tx) => {
     const [app] = await tx.select().from(applications).where(eq(applications.id, applicationId)).for("update").limit(1);
     if (!app || app.deletedAt) throw new NotFoundError("Application");
-    const verdict = await currentVerdict(app.userId, app.scholarshipId);
-    const checklist = to === "submitted" ? await checklistFor(applicationId) : null;
+    // Read through the same transaction: asking the pool for a second connection while holding this one can deadlock.
+    const verdict = await currentVerdict(app.userId, app.scholarshipId, tx);
+    const checklist = to === "submitted" ? await checklistFor(applicationId, tx) : null;
     const check = canTransition(app.status, to, {
       actor: actor.type,
       assessmentVerdict: verdict?.verdict ?? null,
