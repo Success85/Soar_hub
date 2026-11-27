@@ -6,6 +6,8 @@ strong application before the deadline.
 
 **Live site:** <https://soar-hub.vercel.app>  
 **Repository:** <https://github.com/Success85/Soar_hub>
+**SRS document:** <https://docs.google.com/document/d/1CKUMjTucBbPuWI1m6sADwS1jOFmVEgUBhR7kY6lqLb4/edit?usp=sharing>
+**Demo video:** <https://drive.google.com/drive/folders/1HYcvdyc9a06LekSfZGhKzHsnBXd1OUvY?usp=sharing>
 
 SOAR Hub does **not** submit applications and does **not** decide who wins. Applicants always submit on the official
 university or scholarship portal. SOAR Hub gets them ready: the right documents, a plan built backward from the
