@@ -28,7 +28,7 @@ deadline, reviewed essays, referee letters collected, and reminders so nothing s
 9. [Environment variables](#9-environment-variables)
 10. [Integrations](#10-integrations)
 11. [Scheduled jobs](#11-scheduled-jobs)
-12. [Free hosting (Vercel + Supabase)](#12-free-hosting-vercel--supabase)
+12. [Deployment: how the live site is hosted](#12-deployment-how-the-live-site-is-hosted)
 13. [Security and privacy](#13-security-and-privacy)
 14. [Testing](#14-testing)
 15. [Scripts](#15-scripts)
@@ -295,7 +295,7 @@ Full guide: [docs/AI_SETUP.md](docs/AI_SETUP.md).
 | Payments | Flutterwave |
 | AI | Anthropic Claude (essay critique); optional embeddings for search |
 | Malware scanning | ClamAV (optional) |
-| Hosting | Vercel (Hobby) + Supabase (Free) + cron-job.org |
+| Hosting | Vercel (Hobby) runs the app and backend; Supabase (Free) provides only the PostgreSQL database and file storage; cron-job.org |
 | Tests | Vitest (unit, integration), Playwright (end-to-end, accessibility, mobile) |
 
 ```
@@ -484,21 +484,71 @@ Every integration is optional and shows its status in **Admin → Settings → I
 Each group is called at `/api/cron/<group>` with the header `Authorization: Bearer <CRON_SECRET>`. Admins can also
 run any single job from **Admin → Settings**.
 
-## 12. Free hosting (Vercel + Supabase)
+## 12. Deployment: how the live site is hosted
 
-The live site runs entirely on free plans:
+**Live site:** <https://soar-hub.vercel.app>, which runs entirely on free plans.
 
-- **Vercel (Hobby)** runs the app and rebuilds on every push to `main`. Functions run in Dublin (`dub1`, set in
-  `vercel.json`), next to the database.
-- **Supabase (Free)** provides PostgreSQL (through the transaction pooler, port 6543) and the private
-  `soar-documents` storage bucket.
-- **cron-job.org** calls the `frequent` and `hourly` job groups.
-- **Gmail** sends the emails; **Flutterwave** takes the payments.
+### The backend is SOAR Hub's own code, running on Vercel
 
-To publish a database change, run the migrations against Supabase from your computer
-(`DATABASE_URL=... npm run db:migrate`). The full step-by-step guide is in
-[docs/FREE_HOSTING.md](docs/FREE_HOSTING.md); for paid or self-hosted options see
-[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+SOAR Hub's backend is the code in this repository: authentication and sessions, role-based permissions, the
+eligibility engine, the application state machine, the backward-planning scheduler, the membership and Flutterwave
+payment logic, file validation, notifications, the AI critique pipeline and the scheduled jobs (`src/lib/services`,
+`src/lib/engine`, `src/lib/integrations`, `src/app/api`). It is built with Next.js and TypeScript and deployed to
+**Vercel**, which runs it as serverless Node.js functions in Dublin (`dub1`, set in `vercel.json`). Vercel builds and
+publishes it automatically on every push to `main`.
+
+**Supabase is used only for two managed infrastructure services**, the same way another project might rent a database
+server and a storage bucket:
+
+| Supabase service | What SOAR Hub uses it for | How SOAR Hub connects |
+|---|---|---|
+| **PostgreSQL database** | Stores all data. The schema (tables, constraints, indexes) is SOAR Hub's own, created by the migrations in `drizzle/`. | A standard PostgreSQL connection (`pg` driver + Drizzle ORM) through Supabase's connection pooler, set by `DATABASE_URL`. |
+| **File storage bucket** (`soar-documents`, private) | Stores uploaded documents and referee letters. | The standard S3 API (`@aws-sdk/client-s3`), set by the `S3_*` variables. |
+
+SOAR Hub does **not** use Supabase's built-in backend features: no Supabase Auth, no auto-generated REST/GraphQL API,
+no Edge Functions, no Realtime and no `supabase-js` client (it isn't a dependency in `package.json`). Users never talk
+to Supabase directly. Every request goes to SOAR Hub's own server code on Vercel, which checks the session and
+permissions and then reads or writes the database. Because only standard PostgreSQL and S3 are used, the database
+could be moved to any PostgreSQL host (Neon, Railway, a VPS) and the files to any S3-compatible store (AWS S3,
+Cloudflare R2, MinIO) by changing environment variables only, with no code changes.
+
+### How the parts fit together
+
+```
+            Browser (applicant, reviewer, admin, referee)
+                              │  HTTPS
+                              ▼
+   ┌───────────────────────── Vercel ─────────────────────────┐
+   │  SOAR Hub (Next.js + TypeScript, this repository)        │
+   │  pages · server actions · API routes · services · engines│
+   └───┬───────────────┬────────────────┬───────────────┬─────┘
+       │ PostgreSQL     │ S3 API         │ SMTP          │ HTTPS API
+       ▼                ▼                ▼               ▼
+  Supabase Postgres  Supabase Storage   Gmail        Flutterwave
+  (database only)    (files only)       (email)      (payments)
+
+   cron-job.org (every 5 min / hourly) and Vercel Cron (daily) ──► /api/cron/<group> on Vercel
+```
+
+| Part | Service (free plan) | Role |
+|---|---|---|
+| Application and backend | **Vercel** (Hobby) | Runs SOAR Hub's own frontend and backend code |
+| Database | **Supabase** (Free) | Managed PostgreSQL server only |
+| File storage | **Supabase Storage** | S3-compatible bucket only |
+| Scheduled jobs | **cron-job.org** + Vercel Cron | Call SOAR Hub's own job endpoints on a timer |
+| Email | **Gmail** (SMTP, App Password) | Delivers emails that SOAR Hub writes and sends |
+| Payments | **Flutterwave** (test mode) | Hosted checkout; SOAR Hub verifies every payment on its server |
+
+### Deploying a change
+
+- **Code:** merge into `main`. Vercel builds and publishes in 1–3 minutes.
+- **Database schema:** run SOAR Hub's migrations against the database from your computer:
+  `DATABASE_URL=<session pooler URL> npm run db:migrate`.
+- **Settings and secrets:** set as environment variables in Vercel (see [section 9](#9-environment-variables)), never
+  in the code.
+
+The full step-by-step guide is in [docs/FREE_HOSTING.md](docs/FREE_HOSTING.md); for paid or self-hosted options (a
+VPS with Docker, a separate worker process) see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## 13. Security and privacy
 
