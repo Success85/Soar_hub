@@ -316,6 +316,24 @@ Cron (cron-job.org / Vercel) ──► /api/cron/[group] ──► jobs (reminde
 
 More detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
+### Change from the SRS: Next.js and TypeScript instead of Python and FastAPI
+
+The SRS planned a **Python (FastAPI) backend** with a separate frontend. During development I built SOAR Hub with
+**Next.js and TypeScript** for both the frontend and the backend instead. **The requirements did not change:** the
+same actors (visitor, applicant, referee, reviewer/coach, administrator), the same functional requirements and the
+same PostgreSQL data model. Only the implementation technology changed. Why:
+
+| Reason | Python + FastAPI (planned) | Next.js + TypeScript (built) |
+|---|---|---|
+| **Free hosting** | Needs two deployments (an API server and a frontend). Free Python hosts sleep or have tight limits. | One app on Vercel's free plan; the frontend and backend deploy together on every `git push`. |
+| **One language** | Python on the server, JavaScript in the browser, so data types are defined twice. | TypeScript everywhere, so the same types and validation rules (Zod) are shared by the forms, the server and the database layer (Drizzle). |
+| **Less code to wire up** | Every page needs REST endpoints, an API client, and CORS and token handling. | Server components and server actions call the services directly, with no separate API layer for the app's own pages. |
+| **Security** | Tokens between two separate apps. | HTTP-only session cookies on one origin, with built-in protection against cross-site form posts. |
+| **Speed for users on mobile data** | Pages are built in the browser after the API loads. | Pages are rendered on the server, so they load faster on slow connections. |
+
+What stayed the same as the SRS: PostgreSQL as the database, a layered design (pages → services → engines →
+integrations), role-based access, and the external services (email, Flutterwave payments, file storage, AI critique).
+
 ## 7. Project structure
 
 ```
