@@ -4,7 +4,8 @@
 fully funded Mastercard Foundation partner scholarships, check whether they are eligible, and prepare a complete,
 strong application before the deadline.
 
-**Live site:** <https://soar-hub.vercel.app>
+**Live site:** <https://soar-hub.vercel.app>  
+**Repository:** <https://github.com/Success85/Soar_hub>
 
 SOAR Hub does **not** submit applications and does **not** decide who wins. Applicants always submit on the official
 university or scholarship portal. SOAR Hub gets them ready: the right documents, a plan built backward from the
@@ -346,19 +347,48 @@ docs/               detailed guides
 
 ## 8. Running it on your computer
 
-You need **Node.js 20+** and **PostgreSQL 16 with pgvector** (or Docker). Clone or download **this repository**,
-open a terminal in its root folder, then run:
+You need **Node.js 20+**, **Git**, and **PostgreSQL 16 with pgvector** (or Docker, or a free Supabase project).
+
+**Step 1: Clone the repository** from <https://github.com/Success85/Soar_hub>:
 
 ```bash
-# from the root folder of this repository (the folder that contains package.json)
+git clone https://github.com/Success85/Soar_hub.git
+```
+
+**Step 2: Go into the project folder.**
+
+```bash
+cd Soar_hub
+```
+
+**Step 3: Install the dependencies.**
+
+```bash
 npm install
+```
+
+**Step 4: Create your settings file.**
+
+```bash
 cp .env.example .env
 ```
 
-Edit `.env`: at minimum set `DATABASE_URL` and a long random `SESSION_SECRET` (`openssl rand -base64 48`).
+**Step 5: Edit `.env`.** At minimum set `DATABASE_URL` (your PostgreSQL connection string) and a long random
+`SESSION_SECRET`. To make one:
+
+```bash
+openssl rand -base64 48
+```
+
+**Step 6: Set up the database and demo data.**
 
 ```bash
 npm run demo:setup
+```
+
+**Step 7: Start the app.**
+
+```bash
 npm run dev
 ```
 

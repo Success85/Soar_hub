@@ -10,7 +10,8 @@
 
 ## Steps
 ```bash
-# run from the root folder of this repository (the folder that contains package.json)
+git clone https://github.com/Success85/Soar_hub.git
+cd Soar_hub
 npm install
 cp .env.example .env
 # create databases (skip if using Docker/Supabase as above)
