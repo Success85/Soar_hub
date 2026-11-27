@@ -166,15 +166,22 @@ test("applicant: register → verify → pay → onboard → eligibility → pla
   await expect(page.getByText("Submitted").first()).toBeVisible();
 
   // 10. Complete every task in the planner (list view)
-  await page.goto(`/planner?application=${applicationId}&filter=all`); // "all": near a deadline some tasks are already overdue
+  // "all": near a deadline some tasks are already overdue. The page is reloaded on every round so the count is never
+  // read while the list is re-rendering after a click (that made the loop stop early with tasks still open).
+  const plannerUrl = `/planner?application=${applicationId}&filter=all`;
   const buttons = page.getByRole("button", { name: "Mark complete" });
+  await page.goto(plannerUrl);
   await expect(buttons.first()).toBeVisible();
   for (let i = 0; i < 80; i++) {
+    await page.goto(plannerUrl);
+    await expect(page.getByRole("heading", { name: "Application planner" })).toBeVisible();
     const before = await buttons.count();
     if (before === 0) break;
     await buttons.first().click();
     await expect.poll(() => buttons.count(), { timeout: 30_000 }).toBeLessThan(before);
   }
+  await page.goto(plannerUrl);
+  await expect(page.getByRole("heading", { name: "Application planner" })).toBeVisible();
   await expect(buttons).toHaveCount(0); // every task done
   await page.goto(`/planner?application=${applicationId}&view=calendar`);
   await noErrorBoundary(page);
